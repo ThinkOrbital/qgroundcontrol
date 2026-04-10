@@ -298,7 +298,7 @@ Item {
 
                 // -------- EMITTER ALT OFFSET --------
                 QGCLabel {
-                    text: "Emitter Alitude offset:"
+                    text: "Emitter Altitude offset:"
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
