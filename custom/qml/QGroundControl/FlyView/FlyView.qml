@@ -115,6 +115,22 @@ Item {
                 border.color: "#00FF00"
             }
 
+            MapCircle {
+                center: mapControl._vehicleEmitter ? mapControl._vehicleEmitter.coordinate : QtPositioning.coordinate()
+                radius: 30
+                //color: "#4000FF00"
+                border.width: 2
+                border.color: "#e1ff00"
+            }
+
+            MapCircle {
+                center: mapControl._vehicleEmitter ? mapControl._vehicleEmitter.coordinate : QtPositioning.coordinate()
+                radius: 50
+                //color: "#4000FF00"
+                border.width: 2
+                border.color: "#00FF00"
+            }
+
             // --- Black dot in the center ---
             MapQuickItem {
                 id: centerDot
