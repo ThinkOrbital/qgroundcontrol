@@ -290,7 +290,7 @@ Item {
                 QGCTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
-                    unitsLabel: "deg"
+                    unitsLabel: "m"
                     showUnits: true
                     text: backend.sepDistance
                     onEditingFinished: backend.sepDistance = text
