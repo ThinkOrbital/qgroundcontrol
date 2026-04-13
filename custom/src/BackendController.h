@@ -296,8 +296,7 @@ public:
     Q_INVOKABLE void stopScan();
     Q_INVOKABLE void killScan();
     Q_INVOKABLE void emTubeSeasoning();
-    Q_INVOKABLE void detCal();
-    // Q_INVOKABLE void detResetCal();
+    Q_INVOKABLE void payloadCal();
     void send_ack(AckType type);
 
     //payload settings
