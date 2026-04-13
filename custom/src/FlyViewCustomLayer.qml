@@ -598,13 +598,6 @@ Item {
                 QGCLabel { text: "Temperature (C): " + backend.EmTemp }
                 QGCLabel { text: "FIL current (mA): " + backend.FILCurrent }
                 QGCLabel { text: "BAT voltage (mV): " + backend.BATVoltage }
-
-                Button {
-                        Layout.fillWidth: true
-                        text: "Tube Seasoning"
-                        onClicked: backend.emTubeSeasoning()
-                }
-
             }
 
         }
@@ -667,18 +660,6 @@ Item {
                 QGCLabel { text: "Integration Time (ms): " + backend.detInt }
 
                 QGCLabel { text: "Detector Status: " + backend.detStatus }
-
-                Button {
-                    Layout.fillWidth: true
-                    text: "Calibrate Detector"
-                    onClicked: backend.detCal()
-                }
-
-                /*Button {
-                    Layout.fillWidth: true
-                    text: "Reset Calibration"
-                    onClicked: backend.detResetCal()
-                }*/
             }
         }
     }
@@ -728,6 +709,22 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }*/
+            }
+
+            QGCButton {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
+                text: "Calibrate Payloads"
+                onClicked: backend.payloadCal()
+            }
+
+            QGCButton {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
+                    font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
+                    text: "Tube Seasoning"
+                    onClicked: backend.emTubeSeasoning()
             }
 
             QGCButton {
