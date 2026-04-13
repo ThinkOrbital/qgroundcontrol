@@ -339,7 +339,7 @@ void BackendController::processTelemetryUpdates()
 
                             if(!calMsgSent_)
                             {
-                                str_flight_status += "Waiting for user to calibrate panel. ";
+                                str_flight_status += "Waiting for user to calibrate detector. ";
                             }
 
                             if(!str_flight_status.isEmpty())
@@ -378,7 +378,7 @@ void BackendController::processTelemetryUpdates()
 
                         if(!calMsgSent_)
                         {
-                            str_flight_status += "Waiting for user to calibrate panel. ";
+                            str_flight_status += "Waiting for user to calibrate detector. ";
                         }
 
                         if(!str_flight_status.isEmpty())
@@ -571,7 +571,7 @@ void BackendController::processTelemetryUpdates()
     {
         if((this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP]) && !this->calMsgSent_ && (!this->targMsgSent_) )
         {
-            this->setFlightStatus("Waiting for user to send target information to UAVs. \n Waiting for user to calibrate panel.");
+            this->setFlightStatus("Waiting for user to send target information to UAVs. \n Waiting for user to calibrate detector.");
         }
     }
 
@@ -933,24 +933,15 @@ void BackendController::killScan()
     this->sendStartScan(scan_state);
 }
 
-void BackendController::detCal()
+void BackendController::payloadCal()
 {
-    qDebug() << "Detector Calibration Button Pressed";
+    qDebug() << "Payload Calibration Button Pressed";
     scan_state_ = StartScan::scan_cal;
     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_cal);
     this->sendStartScan(scan_state);
     // this->calMsgSent_ = true;
     // this->uav_state_updated_.store(true);
 }
-
-// void BackendController::detResetCal()
-// {
-//     qDebug() << "Detector Reset Calibration Button Pressed";
-//     scan_state_ = StartScan::scan_reset_cal;
-//     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_reset_cal);
-//     this->sendStartScan(scan_state);
-
-// }
 
 //payload
 void BackendController::setCadence(const uint32_t telemCadence)
