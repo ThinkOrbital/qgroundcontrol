@@ -81,31 +81,8 @@ Item {
             enabled:                !_is3DMode
             visible:                !_is3DMode
         
-            property var _vehicleDetector: null
-            property var _vehicleEmitter: null
-
-            Connections {
-                target: QGroundControl.multiVehicleManager
-
-                function onVehicleAdded(vehicle) {
-                    console.log("Vehicle added, sysid:", vehicle.id)
-                    if(vehicle.id === 1)
-                        mapControl._vehicleDetector = vehicle
-
-                    else if(vehicle.id === 2)
-                        mapControl._vehicleEmitter = vehicle
-
-                }
-
-                function onVehicleRemoved(vehicle) {
-                    console.log("Vehicle removed, sysid:", vehicle.id)
-                    if(mapControl._vehicleEmitter === vehicle)
-                        mapControl._vehicleEmitter = null
-
-                    if(mapControl._vehicleDetector === vehicle)
-                        mapControl._vehicleDetector = null
-                }
-            }
+            property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
+            property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
 
             MapCircle {
                 center: backend.centerCoordinate
