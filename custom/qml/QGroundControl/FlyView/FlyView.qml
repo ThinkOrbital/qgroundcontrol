@@ -230,7 +230,6 @@ Item {
             onMapDoubleClicked: (position) => {
                 const coord = toCoordinate(position, false)
                 backend.setCenterCoordinate(coord)
-                myCircle.center = coord
                 followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
             }
