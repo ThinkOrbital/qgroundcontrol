@@ -20,7 +20,6 @@ Item {
 
     property var    _activeVehicle:         QGroundControl.multiVehicleManager.activeVehicle
     property var    _multiVehicleManager:   QGroundControl.multiVehicleManager
-    property var    _vehicles:              _multiVehicleManager.vehicles
     property real   _indicatorDiameter:     ScreenTools.defaultFontPixelWidth * 18
     property real   _indicatorsHeight:      ScreenTools.defaultFontPixelHeight
     property var    _sepColor:              qgcPal.globalTheme === QGCPalette.Light ? Qt.rgba(0,0,0,0.5) : Qt.rgba(1,1,1,0.5)
@@ -33,6 +32,24 @@ Item {
     property string _messageTitle:          ""
     property string _messageText:           ""
     property real   _toolsMargin:           ScreenTools.defaultFontPixelWidth * 0.75
+    property var _vehicleDetector: QGroundControl.multiVehicleManager.vehicles.count > 0
+        ? QGroundControl.multiVehicleManager.getVehicleById(1)
+        : null
+    property var _vehicleEmitter:  QGroundControl.multiVehicleManager.vehicles.count > 0
+        ? QGroundControl.multiVehicleManager.getVehicleById(2)
+        : null
+    property bool _detectorCanArm: _vehicleDetector
+        ? (_vehicleDetector.healthAndArmingCheckReport.supported
+            ? _vehicleDetector.healthAndArmingCheckReport.canArm
+            : !_vehicleDetector.prearmError)
+        : false
+
+    property bool _emitterCanArm: _vehicleEmitter
+        ? (_vehicleEmitter.healthAndArmingCheckReport.supported
+            ? _vehicleEmitter.healthAndArmingCheckReport.canArm
+            : !_vehicleEmitter.prearmError)
+        : false
+    property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
 
     function secondsToHHMMSS(timeS) {
         var sec_num = parseInt(timeS, 10);
@@ -717,14 +734,16 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Calibrate Payloads"
                 onClicked: backend.payloadCal()
+                enabled: _vehicleDetector && _vehicleEmitter && !_vehicleDetector.flying && !_vehicleEmitter.flying
             }
 
             QGCButton {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignHCenter
-                    font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
-                    text: "Tube Seasoning"
-                    onClicked: backend.emTubeSeasoning()
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
+                text: "Tube Seasoning"
+                onClicked: backend.emTubeSeasoning()
+                enabled: _vehicleEmitter && !_vehicleEmitter.flying
             }
 
             QGCButton {
@@ -877,7 +896,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
                 onClicked: backend.sendGoal()
-                enabled: backend.isSendGoalButtonEn
+                enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
             }
 
             QGCButton {
@@ -897,7 +916,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Start Mission"
                 onClicked: backend.startMission()
-                enabled: backend.isStartMissionButtonEn
+                enabled: backend.isStartMissionButtonEn && _vehiclesReadyForMission
             }
 
             QGCButton {
