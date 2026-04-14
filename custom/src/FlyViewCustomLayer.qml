@@ -35,10 +35,21 @@ Item {
     property var _vehicleDetector: QGroundControl.multiVehicleManager.vehicles.count > 0
         ? QGroundControl.multiVehicleManager.getVehicleById(1)
         : null
-
     property var _vehicleEmitter:  QGroundControl.multiVehicleManager.vehicles.count > 0
         ? QGroundControl.multiVehicleManager.getVehicleById(2)
         : null
+    property bool _detectorCanArm: _vehicleDetector
+        ? (_vehicleDetector.healthAndArmingCheckReport.supported
+            ? _vehicleDetector.healthAndArmingCheckReport.canArm
+            : !_vehicleDetector.prearmError)
+        : false
+
+    property bool _emitterCanArm: _vehicleEmitter
+        ? (_vehicleEmitter.healthAndArmingCheckReport.supported
+            ? _vehicleEmitter.healthAndArmingCheckReport.canArm
+            : !_vehicleEmitter.prearmError)
+        : false
+    property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
 
     function secondsToHHMMSS(timeS) {
         var sec_num = parseInt(timeS, 10);
@@ -905,7 +916,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Start Mission"
                 onClicked: backend.startMission()
-                enabled: backend.isStartMissionButtonEn
+                enabled: backend.isStartMissionButtonEn && _vehiclesReadyForMission
             }
 
             QGCButton {
