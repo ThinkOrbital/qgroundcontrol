@@ -897,6 +897,10 @@ Item {
                 text: "Send Goal"
                 onClicked: backend.sendGoal()
                 enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
+                Component.onCompleted: {
+                    background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)
+                    background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.6) : qgcPal.buttonBorder)
+                }
             }
 
             QGCButton {
@@ -907,6 +911,10 @@ Item {
                 text: "Resume Mission"
                 onClicked: backend.resumeMission()
                 enabled: backend.isResumeMissionButtonEn
+                Component.onCompleted: {
+                    background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.3) : qgcPal.button)
+                    background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.6) : qgcPal.buttonBorder)
+                }
             }
             
             QGCButton {
@@ -917,6 +925,10 @@ Item {
                 text: "Start Mission"
                 onClicked: backend.startMission()
                 enabled: backend.isStartMissionButtonEn && _vehiclesReadyForMission
+                Component.onCompleted: {
+                    background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.3) : qgcPal.button)
+                    background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.6) : qgcPal.buttonBorder)
+                }
             }
 
             QGCButton {
@@ -927,10 +939,11 @@ Item {
                 text: "End Mission"
                 onClicked: backend.endMission()
                 enabled: backend.isEndMissionButtonEn
+                Component.onCompleted: {
+                    background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.3) : qgcPal.button)
+                    background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.6) : qgcPal.buttonBorder)
+                }           
             }
-
         }
-
-
     }
 }
