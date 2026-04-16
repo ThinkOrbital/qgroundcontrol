@@ -473,6 +473,7 @@ void BackendController::processTelemetryUpdates()
                             this->setSendGoalButtonEn(true);
                             this->setStopScanButtonEn(false);
                             this->setStartScanButtonEn(this->descend2Targ);
+                            this->setEndMissionButtonEn(true);
                             if(this->descend2Targ)
                             {
                                 this->setFlightStatus("Waiting for user adjustments and/or scan...");
@@ -490,6 +491,7 @@ void BackendController::processTelemetryUpdates()
                         this->setSendGoalButtonEn(true);
                         this->setStopScanButtonEn(false);
                         this->setStartScanButtonEn(this->descend2Targ);
+                        this->setEndMissionButtonEn(true);
                         if(this->descend2Targ)
                         {
                             this->setFlightStatus("Waiting for user adjustments and/or scan...");

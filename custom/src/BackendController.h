@@ -426,7 +426,7 @@ private:
     uint32_t em_telem_cadence_ms_ {500};
     uint32_t em_xray_exposure_ms_ {7000};
     uint32_t em_xray_voltage_kV_  {150};
-    uint32_t em_xray_current_uA_  {500};
+    uint32_t em_xray_current_uA_  {1000};
     uint32_t em_xray_comms_block_timout_ms_ {1000};
 
     TelemetryStruct em_telemetry_;
