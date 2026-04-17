@@ -611,10 +611,10 @@ Item {
                 QGCLabel { text: "Model: " + backend.emModel }
                 QGCLabel { text: "Serial: " + backend.emSerial }
                 QGCLabel { text: "HV voltage (V): " + backend.HVVoltage }
-                QGCLabel { text: "HV current (uA): " + backend.HVCurrent }
-                QGCLabel { text: "Temperature (C): " + backend.EmTemp }
+                QGCLabel { text: "HV current (mA): " + backend.HVCurrent.toFixed(1) }
+                QGCLabel { text: "Temperature (\u00B0C): " + backend.EmTemp.toFixed(1) }
                 QGCLabel { text: "FIL current (mA): " + backend.FILCurrent }
-                QGCLabel { text: "BAT voltage (mV): " + backend.BATVoltage }
+                QGCLabel { text: "BAT voltage (V): " + backend.BATVoltage.toFixed(1) }
             }
 
         }
@@ -675,7 +675,8 @@ Item {
                     Layout.fillWidth: true
                 }
                 QGCLabel { text: "Integration Time (ms): " + backend.detInt }
-
+                QGCLabel { text: "Battery Voltage (V): " + backend.detBatV.toFixed(3) + " (" + backend.detBatPerc + "%)" }
+                QGCLabel { text: "External Power Present: " + backend.detBatExtPow}
                 QGCLabel { text: "Detector Status: " + backend.detStatus }
             }
         }

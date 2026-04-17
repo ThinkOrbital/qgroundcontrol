@@ -181,6 +181,9 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 // this->det_status_ = static_cast<DetStatus>(det_status.det_state);
                 this->det_versions_ = det_status.det_version;
                 this->det_integration_time_ = det_status.det_int_time_ms;
+                this->det_battery_voltage_ = det_status.det_bat_volt;
+                this->det_battery_ext_pow_ = det_status.det_dc_present;
+                this->det_battery_charge_ = det_status.det_bat_charge;
                 DetStatus state = static_cast<DetStatus> (det_status.det_state);
 
                 switch(state)
@@ -559,6 +562,9 @@ void BackendController::processTelemetryUpdates()
         
         emit detVerChanged();
         emit detIntChanged();
+        emit detBatVChanged();
+        emit detBatExtPowChanged();
+        emit detBatPercChanged();
         emit detStatusChanged();
         if(!this->det_versions_.isEmpty())
         {
