@@ -121,15 +121,18 @@ class BackendController : public QObject {
     Q_PROPERTY(QString emModel READ emModel NOTIFY emModelChanged)
     Q_PROPERTY(QString emSerial READ emSerial NOTIFY emSerialChanged)
     Q_PROPERTY(uint32_t HVVoltage READ HVVoltage NOTIFY HVVoltageChanged)
-    Q_PROPERTY(uint32_t HVCurrent READ HVCurrent NOTIFY HVCurrentChanged)
-    Q_PROPERTY(int32_t EmTemp READ EmTemp NOTIFY EmTempChanged)
+    Q_PROPERTY(float HVCurrent READ HVCurrent NOTIFY HVCurrentChanged)
+    Q_PROPERTY(float EmTemp READ EmTemp NOTIFY EmTempChanged)
     Q_PROPERTY(uint32_t FILCurrent READ FILCurrent NOTIFY FILCurrentChanged)
-    Q_PROPERTY(uint32_t BATVoltage READ BATVoltage NOTIFY BATVoltageChanged)
+    Q_PROPERTY(float BATVoltage READ BATVoltage NOTIFY BATVoltageChanged)
     Q_PROPERTY(bool emitterConnected READ emitterConnected WRITE setEmitterConnected NOTIFY emitterConnectionChanged)
     Q_PROPERTY(bool detectorConnected READ detectorConnected WRITE setDetectorConnected NOTIFY detectorConnectionChanged)
 
     Q_PROPERTY(QString detVer READ detVer NOTIFY detVerChanged)
     Q_PROPERTY(uint64_t detInt READ detInt NOTIFY detIntChanged)
+    Q_PROPERTY(float detBatV READ detBatV NOTIFY detBatVChanged)
+    Q_PROPERTY(uint8_t detBatPerc READ detBatPerc NOTIFY detBatPercChanged)
+    Q_PROPERTY(uint8_t detBatExtPow READ detBatExtPow NOTIFY detBatExtPowChanged)
     Q_PROPERTY(QString detStatus READ detStatus NOTIFY detStatusChanged)
 
     Q_PROPERTY(QString flightStatus READ flightStatus WRITE setFlightStatus NOTIFY flightStatusChanged)
@@ -258,13 +261,16 @@ public:
     QString emModel() const {return this->em_model_; };
     QString emSerial() const {return this->em_serial_; };
     uint32_t HVVoltage() const { return this->em_telemetry_.HVvoltage_V; };
-    uint32_t HVCurrent() const { return this->em_telemetry_.HVcurrent_uA; };
-    int32_t EmTemp() const { return this->em_telemetry_.temperature_Cp1; };
+    float HVCurrent() const { return static_cast<float>(this->em_telemetry_.HVcurrent_uA)/1000; };
+    float    EmTemp() const { return static_cast<float>(this->em_telemetry_.temperature_Cp1)/10; };
     uint32_t FILCurrent() const { return this->em_telemetry_.FILcurrent_mA; };
-    uint32_t BATVoltage() const { return this->em_telemetry_.BATvoltage_mV; };
+    float BATVoltage() const { return static_cast<float>(this->em_telemetry_.BATvoltage_mV)/1000; };
 
     QString detVer() const { return this->det_versions_; };
     uint64_t detInt() const { return this->det_integration_time_; }
+    float detBatV() const {return this->det_battery_voltage_; }
+    uint8_t detBatExtPow() const {return this->det_battery_ext_pow_; }
+    uint8_t detBatPerc() const {return this->det_battery_charge_; }
 
     QString flightStatus() const {return this->flight_status_; }
     
@@ -372,6 +378,9 @@ signals:
 
     void detVerChanged();
     void detIntChanged();
+    void detBatVChanged();
+    void detBatExtPowChanged();
+    void detBatPercChanged();
     void detStatusChanged();
 
     void flightStatusChanged();
@@ -416,6 +425,9 @@ private:
     //detector settings
     uint64_t det_xray_window_ms_ {1000};
     uint64_t det_integration_time_ {};
+    float    det_battery_voltage_ {};
+    uint8_t  det_battery_ext_pow_ {};
+    uint8_t  det_battery_charge_ {};
     QString  det_versions_ {};
     QString  det_status_ {};
     QString  file_name_ {"image"};
