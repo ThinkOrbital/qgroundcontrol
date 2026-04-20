@@ -52,7 +52,18 @@ Item {
         : false
     property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
 
-    property var _sepDistFact: QGroundControl.settingsManager.flyViewSettings.custSeparationDistance
+    property var _sepDistFact: QGroundControl.settingsManager.customSettings.separationDistance
+    property var _bearingFact: QGroundControl.settingsManager.customSettings.bearing
+    property var _goalAltitudeFact: QGroundControl.settingsManager.customSettings.altitude
+    property var _detOffsetFact: QGroundControl.settingsManager.customSettings.detOffset
+    property var _emAltOffsetFact: QGroundControl.settingsManager.customSettings.emAltOffset
+    property var _flightAltFact: QGroundControl.settingsManager.customSettings.flightAlt
+    property var _flightVelFact: QGroundControl.settingsManager.customSettings.flightVel
+    property var _goalLatFact: QGroundControl.settingsManager.customSettings.goalLat
+    property var _goalLonFact: QGroundControl.settingsManager.customSettings.goalLon
+    property var _numImagesFact: QGroundControl.settingsManager.customSettings.numImages
+    property var _fileNameFact: QGroundControl.settingsManager.customSettings.fileName
+    property var _detectorXrayWindowFact: QGroundControl.settingsManager.customSettings.detectorXrayWindow
 
 
     function secondsToHHMMSS(timeS) {
@@ -171,7 +182,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     text: backend.centerCoordinate.latitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
@@ -191,7 +202,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     text: backend.centerCoordinate.longitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
@@ -211,13 +222,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.altitude
-                    onEditingFinished: backend.altitude = text
+                    fact: _flightAltFact
                 }
 
                 // -------- BEARING --------
@@ -227,13 +237,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
-                    text: backend.bearing
-                    onEditingFinished: backend.bearing = text
+                    fact: _bearingFact
                 }
 
                 // -------- DETECTOR POS OFFSET --------
@@ -243,13 +252,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.detOffset
-                    onEditingFinished: backend.detOffset = text
+                    fact: _detOffsetFact
                 }
             }
         }
@@ -311,7 +319,6 @@ Item {
             FactTextField {
                 Layout.fillWidth: true
                 fact: _sepDistFact
-
                 unitsLabel: "m"
                 showUnits: true
             }
@@ -323,13 +330,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                    fact: _emAltOffsetFact
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.emAltOffset
-                    onEditingFinished: backend.emAltOffset = text
                 }
 
                 // -------- Flight ALTITUDE --------
@@ -339,13 +345,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                    fact: _flightAltFact
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.flightAlt
-                    onEditingFinished: backend.flightAlt = text
                 }
 
                 // -------- Flight VELOCITY --------
@@ -355,13 +360,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                    fact: _flightVelFact
                     unitsLabel: "m/s"
                     showUnits: true
-                    text: backend.flightVel
-                    onEditingFinished: backend.flightVel = text
                 }
             }
         }
@@ -951,6 +955,20 @@ Item {
         }
     }
 
+    Component.onCompleted: {
+        backend.sepDistance = _sepDistFact.value
+        backend.bearing = _bearingFact.value
+        backend.goalAltitude = _goalAltitudeFact.value
+        backend.detOffset = _detOffsetFact.value
+        backend.emAltOffset = _emAltOffsetFact.value
+        backend.flightAlt = _flightAltFact.value
+        backend.flightVel = _flightVelFact.value
+        backend.goalLat = _goalLatFact.value
+        backend.goalLon = _goalLonFact.value
+        backend.numImages = _numImagesFact.value
+        backend.fileName = _fileNameFact.value
+        backend.detectorXrayWindow = _detectorXrayWindowFact.value
+    }
     Connections {
         target: _sepDistFact
 
@@ -959,8 +977,92 @@ Item {
                 _sepDistFact.value
         }
     }
-    Component.onCompleted: {
-        backend.sepDistance = _sepDistFact.value
-    }
+    Connections {
+        target: _bearingFact
 
+        function onValueChanged() {
+            backend.bearing =
+                _bearingFact.value
+        }
+    }
+    Connections {
+        target: _goalAltitudeFact
+
+        function onValueChanged() {
+            backend.goalAltitude =
+                _goalAltitudeFact.value
+        }
+    }
+    Connections {
+        target: _detOffsetFact
+
+        function onValueChanged() {
+            backend.detOffset =
+                _detOffsetFact.value
+        }
+    }
+    Connections {
+        target: _emAltOffsetFact
+
+        function onValueChanged() {
+            backend.emAltOffset =
+                _emAltOffsetFact.value
+        }
+    }
+    Connections {
+        target: _flightAltFact
+
+        function onValueChanged() {
+            backend.flightAlt =
+                _flightAltFact.value
+        }
+    }
+    Connections {
+        target: _flightVelFact
+
+        function onValueChanged() {
+            backend.flightVel =
+                _flightVelFact.value
+        }
+    }
+    Connections {
+        target: _goalLatFact
+
+        function onValueChanged() {
+            backend.goalLat =
+                _goalLatFact.value
+        }
+    }
+    Connections {
+        target: _goalLonFact
+
+        function onValueChanged() {
+            backend.goalLon =
+                _goalLonFact.value
+        }
+    }
+    Connections {
+        target: _numImagesFact
+
+        function onValueChanged() {
+            backend.numImages =
+                _numImagesFact.value
+        }
+    }
+    Connections {
+        target: _fileNameFact
+
+        function onValueChanged() {
+            backend.fileName =
+                _fileNameFact.value
+        }
+    }
+    Connections {
+        target: _detectorXrayWindowFact
+
+        function onValueChanged() {
+            backend.detectorXrayWindow =
+                _detectorXrayWindowFact.value
+        }
+    }
 }
