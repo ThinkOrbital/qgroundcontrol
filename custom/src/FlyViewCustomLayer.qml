@@ -9,6 +9,7 @@ import QGroundControl.Controls
 import Custom.Widgets
 
 import QGroundControl.FlightMap 1.0
+import QGroundControl.FactControls
 
 Item {
     property var parentToolInsets                       // These insets tell you what screen real estate is available for positioning the controls in your overlay
@@ -50,6 +51,9 @@ Item {
             : !_vehicleEmitter.prearmError)
         : false
     property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
+
+    property var _sepDistFact: QGroundControl.settingsManager.flyViewSettings.custSeparationDistance
+
 
     function secondsToHHMMSS(timeS) {
         var sec_num = parseInt(timeS, 10);
@@ -297,21 +301,20 @@ Item {
                 Layout.fillWidth: true
                 spacing: 2
             
-                // -------- SEPARATION --------
-                QGCLabel {
-                    text: "UAV-UAV Separation (m):"
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: false
-                }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
-                    unitsLabel: "m"
-                    showUnits: true
-                    text: backend.sepDistance
-                    onEditingFinished: backend.sepDistance = text
-                }
+            // -------- SEPARATION --------
+            QGCLabel {
+                text: "UAV-UAV Separation (m):"
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: false
+            }
+
+            FactTextField {
+                Layout.fillWidth: true
+                fact: _sepDistFact
+
+                unitsLabel: "m"
+                showUnits: true
+            }
 
                 // -------- EMITTER ALT OFFSET --------
                 QGCLabel {
@@ -947,4 +950,17 @@ Item {
             }
         }
     }
+
+    Connections {
+        target: _sepDistFact
+
+        function onValueChanged() {
+            backend.sepDistance =
+                _sepDistFact.value
+        }
+    }
+    Component.onCompleted: {
+        backend.sepDistance = _sepDistFact.value
+    }
+
 }
