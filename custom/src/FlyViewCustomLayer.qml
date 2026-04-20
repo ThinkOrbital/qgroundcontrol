@@ -321,7 +321,6 @@ Item {
             FactTextField {
                 Layout.fillWidth: true
                 fact: _sepDistFact
-
                 unitsLabel: "m"
                 showUnits: true
             }

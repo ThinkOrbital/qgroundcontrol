@@ -57,6 +57,8 @@ target_sources(${CMAKE_PROJECT_NAME}
         MapsSettings.h
         Viewer3DSettings.cc
         Viewer3DSettings.h
+        CustomSettings.h
+        CustomSettings.cc
 )
 
 # ----------------------------------------------------------------------------

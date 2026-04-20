@@ -79,6 +79,7 @@ void SettingsManager::init()
     _logManagerSettings = new LogManagerSettings(this);
     _logViewerSettings = new LogViewerSettings(this);
     _viewer3DSettings = new Viewer3DSettings(this);
+    _customSettings = new CustomSettings(this);
     _adsbVehicleManagerSettings = new ADSBVehicleManagerSettings(this);
 #ifndef QGC_NO_ARDUPILOT_DIALECT
     _apmMavlinkStreamRateSettings = new APMMavlinkStreamRateSettings(this);
@@ -111,6 +112,7 @@ JoystickManagerSettings *SettingsManager::joystickManagerSettings() const { retu
 LogManagerSettings *SettingsManager::logManagerSettings() const { return _logManagerSettings; }
 LogViewerSettings *SettingsManager::logViewerSettings() const { return _logViewerSettings; }
 Viewer3DSettings *SettingsManager::viewer3DSettings() const { return _viewer3DSettings; }
+CustomSettings *SettingsManager::customSettings() const { return _customSettings; }
 
 void SettingsManager::_loadSettingsFiles()
 {
