@@ -311,19 +311,20 @@ Item {
                 Layout.fillWidth: true
                 spacing: 2
             
-                // -------- SEPARATION --------
-                QGCLabel {
-                    text: "UAV-UAV Separation (m):"
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: false
-                }
+            // -------- SEPARATION --------
+            QGCLabel {
+                text: "UAV-UAV Separation (m):"
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: false
+            }
 
-                FactTextField {
-                    Layout.fillWidth: true
-                    fact: _sepDistFact
-                    unitsLabel: "m"
-                    showUnits: true
-                }
+            FactTextField {
+                Layout.fillWidth: true
+                fact: _sepDistFact
+
+                unitsLabel: "m"
+                showUnits: true
+            }
 
                 // -------- EMITTER ALT OFFSET --------
                 QGCLabel {
