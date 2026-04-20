@@ -28,6 +28,7 @@ class Viewer3DSettings;
 class MavlinkSettings;
 class FactMetaData;
 class JoystickManagerSettings;
+class CustomSettings;
 
 /// Provides access to all app settings
 class SettingsManager : public QObject
@@ -59,6 +60,7 @@ class SettingsManager : public QObject
     Q_MOC_INCLUDE("MavlinkSettings.h")
     Q_MOC_INCLUDE("JoystickManagerSettings.h")
     Q_MOC_INCLUDE("Viewer3DSettings.h")
+    Q_MOC_INCLUDE("CustomSettings.h")
     Q_PROPERTY(QObject *adsbVehicleManagerSettings      READ adsbVehicleManagerSettings     CONSTANT)
 #ifndef QGC_NO_ARDUPILOT_DIALECT
     Q_PROPERTY(QObject *apmMavlinkStreamRateSettings    READ apmMavlinkStreamRateSettings   CONSTANT)
@@ -83,6 +85,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(QObject *mavlinkSettings                 READ mavlinkSettings                CONSTANT)
     Q_PROPERTY(QObject *joystickManagerSettings         READ joystickManagerSettings        CONSTANT)
     Q_PROPERTY(QObject *viewer3DSettings                READ viewer3DSettings               CONSTANT)
+    Q_PROPERTY(QObject *customSettings                  READ customSettings                 CONSTANT)
 public:
     SettingsManager(QObject *parent = nullptr);
     ~SettingsManager();
@@ -121,6 +124,7 @@ public:
     MavlinkSettings *mavlinkSettings() const;
     JoystickManagerSettings *joystickManagerSettings() const;
     Viewer3DSettings *viewer3DSettings() const;
+    CustomSettings *customSettings() const;
 
 private:
     void _loadSettingsFiles();
@@ -149,6 +153,7 @@ private:
     MavlinkSettings *_mavlinkSettings = nullptr;
     JoystickManagerSettings *_joystickManagerSettings = nullptr;
     Viewer3DSettings *_viewer3DSettings = nullptr;
+    CustomSettings *_customSettings = nullptr;
 
     QMap<QString, QMap<QString, QJsonObject>> _settingsFileOverrides;   // groupName:settingName:metaDataObject
 
