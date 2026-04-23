@@ -147,7 +147,7 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 if(coop_state.state == 6) //ToDo: need to add enum for UAV states to QGC
                 {
                     qDebug() << "Sending out Acknowledge message";
-                    this->send_ack(AckType::ack_coop);
+                    this->send_ack(AckType::ack_coop_opin);
                 }
 
                 break;
@@ -218,7 +218,7 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
             case MAVLINK_MSG_ID_MSG_ACK: {
                 mavlink_msg_ack_t msg_ack;
                 mavlink_msg_msg_ack_decode(&message, &msg_ack);
-
+                
                 this->msg_ack_map_[message.sysid] = static_cast<AckType> (msg_ack.ack_type);
 
                 if(this->subscribed_map_[SYSID_EMITTER_COMP] && this->subscribed_map_[SYSID_DETECTOR_COMP])
@@ -445,18 +445,13 @@ void BackendController::processTelemetryUpdates()
                             this->setFlightStatus("Performing X-Ray Scan...");
                             this->setStopScanButtonEn(true);
                             break;
-                        case StartScan::scan_settings:
-                            this->setFlightStatus("Updating Scan Settings...");
-                            break;
                         case StartScan::scan_hard_kill:
                             this->setFlightStatus("Powering off emitter...");
                             break;
                         case StartScan::scan_cal:
                             this->setFlightStatus("Calibrating Detector...");
                             break;
-                        case StartScan::scan_reset_cal:
-                            this->setFlightStatus("Resetting Calibration...");
-                            break;
+
                         case StartScan::scan_tube_season:
                             this->setFlightStatus("Performing Tube Seasoning...");
                             break;
