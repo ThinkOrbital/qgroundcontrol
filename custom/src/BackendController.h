@@ -15,6 +15,8 @@
 #include "mavlink.h"
 #include "MAVLinkProtocol.h"
 
+enum class FlightState{init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, test};
+
 enum class DetStatus : uint8_t {
      no_connection = 0,
      connected = 1,
@@ -36,18 +38,25 @@ enum class StartMission : uint8_t {
 enum class StartScan : uint8_t {
     scan_off = 0,
     scan_on = 1,
-    scan_settings = 2,
-    scan_hard_kill = 3,
-    scan_cal = 4,
-    scan_reset_cal = 5,
-    scan_tube_season = 6
+    scan_hard_kill = 2,
+    scan_cal = 3,
+    scan_tube_season = 4
 };
 
 enum class AckType : uint8_t {
         ack_target = 0,
-        ack_coop = 1,
-        ack_start = 2,
-        ack_scan = 3
+        ack_coop_init = 1,
+        ack_coop_takeoff = 2,
+        ack_coop_flight = 3,
+        ack_coop_align = 4,
+        ack_coop_descend = 5,
+        ack_coop_scan = 6,
+        ack_coop_rtl = 7,
+        ack_coop_opin = 8,
+        ack_start_start = 9,
+        ack_start_resume = 10,
+        ack_start_end = 11,
+        ack_scan = 12
 };
 
 struct TelemetryStruct {
@@ -460,6 +469,8 @@ private:
     std::map<uint8_t, int32_t> gps_sats_map_;
 
     std::map<uint8_t, AckType> msg_ack_map_;
+
+    std::map<uint8_t, FlightState> flight_state_map_;
 
     QMap<uint8_t, qint64> heartbeat_last_seen_ms_;  // sysid → last heartbeat timestamp
     static constexpr int HEARTBEAT_TIMEOUT_MS = 5000; // 5 second timeout
