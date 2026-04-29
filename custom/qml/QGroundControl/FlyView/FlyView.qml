@@ -70,6 +70,146 @@ Item {
         id:                 mapHolder
         anchors.fill:       parent
 
+        property var _activeTiles: ({})
+        property var _tilePool:    []
+
+        function lonToTileX(lon, z) {
+            return Math.floor((lon + 180.0) / 360.0 * Math.pow(2, z))
+        }
+
+        function latToTileY(lat, z) {
+            var latRad = lat * Math.PI / 180.0
+            return Math.floor(
+                (1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI)
+                / 2.0 * Math.pow(2, z))
+        }
+
+        function tileToCoord(tx, ty, tz) {
+            var n      = Math.pow(2, tz)
+            var lon    = tx / n * 360.0 - 180.0
+            var latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * ty / n)))
+            return QtPositioning.coordinate(latRad * 180.0 / Math.PI, lon)
+        }
+
+        function updateTiles() {
+            if (!backend.orthoReady) return
+            if (!backend.orthoTileUrl || backend.orthoTileUrl === "") return
+
+            var z      = Math.floor(mapControl.zoomLevel)
+            var BUFFER = 1
+
+            var nw = mapControl.toCoordinate(Qt.point(0, 0))
+            var se = mapControl.toCoordinate(Qt.point(mapControl.width, mapControl.height))
+
+            var xMin = lonToTileX(nw.longitude, z) - BUFFER
+            var xMax = lonToTileX(se.longitude, z) + BUFFER
+            var yMin = latToTileY(nw.latitude,  z) - BUFFER
+            var yMax = latToTileY(se.latitude,  z) + BUFFER
+
+            var neededKeys = {}
+            for (var tx = xMin; tx <= xMax; tx++) {
+                for (var ty = yMin; ty <= yMax; ty++) {
+                    neededKeys[z + "/" + tx + "/" + ty] = { z: z, x: tx, y: ty }
+                }
+            }
+
+            // Return unneeded tiles to pool
+            for (var key in _activeTiles) {
+                if (!(key in neededKeys)) {
+                    var old = _activeTiles[key]
+                    old.visible = false
+                    _tilePool.push(old)
+                    delete _activeTiles[key]
+                }
+            }
+
+            // Assign or create tiles
+            for (var k in neededKeys) {
+                if (k in _activeTiles) continue
+
+                var t   = neededKeys[k]
+                var url = backend.orthoTileUrl
+                            .replace("{z}", t.z)
+                            .replace("{x}", t.x)
+                            .replace("{y}", t.y)
+
+                var tileObj
+                if (_tilePool.length > 0) {
+                    tileObj          = _tilePool.pop()
+                    tileObj.tileX    = t.x
+                    tileObj.tileY    = t.y
+                    tileObj.tileZ    = t.z
+                    tileObj.imageUrl = url
+                    tileObj.visible  = true
+                } else {
+                    tileObj = tileComponent.createObject(mapControl, {
+                        "tileX": t.x, "tileY": t.y, "tileZ": t.z, "imageUrl": url
+                    })
+                }
+
+                _activeTiles[k] = tileObj
+            }
+        }
+
+        function clearTiles() {
+            for (var key in _activeTiles) {
+                _activeTiles[key].destroy()
+            }
+            _activeTiles = {}
+            for (var i = 0; i < _tilePool.length; i++) {
+                _tilePool[i].destroy()
+            }
+            _tilePool = []
+        }
+
+        Timer { id: panDebounce;  interval: 80;  onTriggered: mapHolder.updateTiles() }
+        Timer { id: zoomDebounce; interval: 300; onTriggered: mapHolder.updateTiles() }
+
+        Connections {
+            target: mapControl 
+            function onCenterChanged()    { panDebounce.restart()  }
+            function onZoomLevelChanged() { zoomDebounce.restart() }
+        }
+
+        Connections {
+            target: backend
+            function onOrthoReadyChanged() {
+                if (backend.orthoReady) mapHolder.updateTiles()
+                else                    mapHolder.clearTiles()
+            }
+        }
+
+        Component {
+            id: tileComponent
+
+            MapQuickItem {
+                property int    tileX
+                property int    tileY
+                property int    tileZ
+                property string imageUrl
+
+                anchorPoint.x: 0
+                anchorPoint.y: 0
+                zoomLevel:     tileZ + 1
+                coordinate:    mapHolder.tileToCoord(tileX, tileY, tileZ)
+
+                sourceItem: Image {
+                    source:   imageUrl
+                    width:    256
+                    height:   256
+                    opacity:  backend.orthoOpacity
+                    visible:  backend.orthoReady
+                    cache:    true
+                    fillMode: Image.Stretch
+
+                    onStatusChanged: {
+                        if (status === Image.Error)
+                            visible = false
+                    }
+                }
+            }
+        }
+
         FlyViewMap {
             id:                     mapControl
             planMasterController:   _planController

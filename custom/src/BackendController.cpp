@@ -332,6 +332,7 @@ void BackendController::processTelemetryUpdates()
                             if(targMsgSent_ && calMsgSent_)
                             {
                                 str_flight_status = "Waiting for user to press start mission button.";
+                                qDebug() << "Start Mission Button should be enabled";
                                 this->setStartMissionButtonEn(true);
                             }
 
@@ -371,6 +372,7 @@ void BackendController::processTelemetryUpdates()
                         if(targMsgSent_ && calMsgSent_)
                         {
                             this->setStartMissionButtonEn(true);
+                            qDebug() << "Start Mission Button should be enabled";
                             str_flight_status = "Waiting for user to press start mission button.";
                         }
 
@@ -728,7 +730,7 @@ void BackendController::setEndMissionButtonEn(const bool enabled)
 
 void BackendController::sendGoal()
 {
-    qDebug() << "Send Goal Button Pressed!";
+    // qDebug() << "Send Goal Button Pressed!";
 
      // fill out the message
     double lat_int, lat_frac, lon_int, lon_frac;
@@ -850,6 +852,475 @@ void BackendController::sendStartScan(uint8_t & state)
     }
 }
 
+/********************* Orthomosiac**************************** */
+
+//load GeoTiff
+void BackendController::loadGeoTiff(const QString& path)
+{   
+    if(this->ortho_processing_) return;
+
+    this->ortho_cancelled_ = false;
+    this->ortho_ready_ = false;
+    this->ortho_processing_ = true;
+    this->ortho_progress_ = 0.0;
+    emit orthoProcessingChanged();
+    emit orthoReadyChanged();
+
+    QString cleaned = path;
+    if (cleaned.startsWith("file://"))
+        cleaned = QUrl(path).toLocalFile();
+
+    this->future_ = QtConcurrent::run([this, cleaned]()
+    {
+        if (!this->stepValidateAndOpen(cleaned)) return;
+
+        this->ortho_file_name_ = QFileInfo(cleaned).fileName();
+        emit orthoFileNameChanged();
+
+        if (this->ortho_cancelled_) return;
+        if (!this->stepReprojectToWebMercator()) return;
+
+        if (this->ortho_cancelled_) return;
+        if (!this->stepBuildOverviews()) return;
+
+        if (this->ortho_cancelled_) return;
+        if (!this->stepStartTileServer()) return;
+
+        this->ortho_ready_ = true;
+        this->ortho_processing_ = false;
+
+        emit orthoReadyChanged();
+        emit orthoProcessingChanged();
+    });
+}
+
+// Step 1: Validate and Open GeoTiff
+bool BackendController::stepValidateAndOpen(const QString& path)
+{
+    this->setOrthoProgress(0.0, "Opening GeoTiff...");
+
+    // Clean up any previous session — marshal to main thread
+    QMetaObject::invokeMethod(this, [this]() {
+        this->cleanupPreviousSession();
+    }, Qt::BlockingQueuedConnection);
+
+    GDALAllRegister();
+    QByteArray bytes = path.toUtf8();
+    
+    this->gdal_dataset_ = (GDALDataset*)GDALOpen(bytes.constData(), GA_ReadOnly);
+    if(!this->gdal_dataset_)
+    {
+        emit errorOccurred("Failed to open GeoTiff: " + path);
+        return false;
+    }
+
+    // Verify it has a valid projection
+    if(QString(this->gdal_dataset_->GetProjectionRef()).isEmpty())
+    {
+        emit errorOccurred("GeoTiff has no projection information.");
+        GDALClose(this->gdal_dataset_);
+        this->gdal_dataset_ = nullptr;
+        return false;
+    }
+
+    this->setOrthoProgress(5.0, "Validated GeoTiff");
+    return true;
+}   
+
+// Step 2: Reproject to Web Mercator (EPSG:3857)
+bool BackendController::stepReprojectToWebMercator()
+{
+    this->setOrthoProgress(5.0, "Creating Web Mercator VRT...");
+
+    if (!this->gdal_dataset_)
+    {
+        emit errorOccurred("No dataset loaded.");
+        return false;
+    }
+
+    const char* targetSRS = "EPSG:3857";
+
+    GDALDatasetH warpedVRT = GDALAutoCreateWarpedVRT(
+        (GDALDatasetH)this->gdal_dataset_,
+        nullptr,
+        targetSRS,
+        GRA_Bilinear,
+        0.0,
+        nullptr
+    );
+
+    if (!warpedVRT)
+    {
+        emit errorOccurred("Failed to create warped VRT.");
+        return false;
+    }
+
+    GDALClose((GDALDatasetH)this->gdal_dataset_);
+    this->gdal_dataset_ = (GDALDataset*)warpedVRT;
+
+    this->setOrthoProgress(40.0, "Warped VRT ready");
+    return true;
+}
+
+// Step 3: Build overviews (zoom levels)
+bool BackendController::stepBuildOverviews()
+{
+    this->setOrthoProgress(40.0, "Building overviews...");
+
+    if (!this->gdal_dataset_)
+        return false;
+
+    GDALDriverH driver = GDALGetDatasetDriver(this->gdal_dataset_);
+    QString driverName = GDALGetDriverShortName(driver);
+
+    // VRT already handles resampling well → skip if needed
+    if (driverName == "VRT")
+    {
+        this->setOrthoProgress(70.0, "Skipping overviews (VRT)");
+        return true;
+    }
+
+    int levels[] = {2, 4, 8, 16, 32};
+    int count = sizeof(levels) / sizeof(int);
+
+    CPLErr err = this->gdal_dataset_->BuildOverviews(
+        "LANCZOS",
+        count,
+        levels,
+        0,
+        nullptr,
+        nullptr,
+        nullptr
+    );
+
+    if (err != CE_None)
+    {
+        emit errorOccurred("Failed to build overviews.");
+        return false;
+    }
+
+    this->setOrthoProgress(70.0, "Overviews ready");
+    return true;
+}
+
+// Step 5: Start tile server
+bool BackendController::stepStartTileServer()
+{
+    bool success = false;
+
+    // QTcpServer must be created and started on the main thread
+    QMetaObject::invokeMethod(this, [this, &success]() {
+
+        this->qtcp_server_ = new QTcpServer(this);
+
+        connect(this->qtcp_server_, &QTcpServer::newConnection,
+                this, [this]() {
+            while (this->qtcp_server_->hasPendingConnections()) {
+                QTcpSocket* socket = this->qtcp_server_->nextPendingConnection();
+
+                qDebug() << "Tile client connected from"
+                         << socket->peerAddress().toString();
+
+                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+                    // Accumulate data into a buffer property until full
+                    // HTTP request headers have arrived
+                    socket->setProperty("buffer",
+                        socket->property("buffer").toByteArray() + socket->readAll());
+
+                    QByteArray buffer = socket->property("buffer").toByteArray();
+
+                    // HTTP headers are always terminated by \r\n\r\n
+                    // Wait for more data if we haven't received it yet
+                    if (!buffer.contains("\r\n\r\n"))
+                        return;
+
+                    this->handleTileRequest(socket, buffer);
+                });
+
+                connect(socket, &QTcpSocket::disconnected,
+                        socket, &QTcpSocket::deleteLater);
+            }
+        });
+
+        if (!this->qtcp_server_->listen(QHostAddress::LocalHost, 0)) {
+            qWarning() << "Tile server failed to start:"
+                       << this->qtcp_server_->errorString();
+            success = false;
+            return;
+        }
+
+        this->ortho_tile_url_ =
+            QString("http://localhost:%1/tiles/{z}/{x}/{y}.png")
+                .arg(this->qtcp_server_->serverPort());
+
+        qDebug() << "Tile server running at:" << this->ortho_tile_url_;
+        success = true;
+
+    }, Qt::BlockingQueuedConnection);
+
+    if (!success) return false;
+
+    this->setOrthoProgress(100.0, "Ready ✓");
+    return true;
+}
+
+void BackendController::handleTileRequest(QTcpSocket* socket,
+                                           const QByteArray& request)
+{
+    // Parse: "GET /tiles/15/12345/67890.png HTTP/1.1"
+    QRegularExpression re(R"(GET /tiles/(\d+)/(\d+)/(\d+)\.png)");
+    QRegularExpressionMatch match = re.match(QString(request));
+
+    if (!match.hasMatch()) {
+        qWarning() << "Unrecognised tile request:" << request.left(200);
+        socket->write("HTTP/1.1 400 Bad Request\r\n"
+                      "Content-Length: 0\r\n\r\n");
+        socket->disconnectFromHost();
+        return;
+    }
+
+    const int z = match.captured(1).toInt();
+    const int x = match.captured(2).toInt();
+    const int y = match.captured(3).toInt();
+
+    const QByteArray tile = this->renderTile(z, x, y);
+
+    if (tile.isEmpty()) {
+        // Tile is outside the ortho bounds — send transparent/empty response
+        // 204 tells the map not to retry this tile
+        socket->write("HTTP/1.1 204 No Content\r\n"
+                      "Content-Length: 0\r\n\r\n");
+    } else {
+        const QByteArray header =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: image/png\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Cache-Control: max-age=3600\r\n"
+            "Content-Length: " + QByteArray::number(tile.size()) + "\r\n"
+            "\r\n";
+        socket->write(header);
+        socket->write(tile);
+    }
+
+    socket->disconnectFromHost();
+}
+
+QByteArray BackendController::renderTile(int z, int x, int y)
+{
+    const QString key = QString("%1/%2/%3").arg(z).arg(x).arg(y);
+
+    // Check cache first
+    {
+        QMutexLocker lock(&this->cache_mutex_);
+        if (this->tile_cache_.contains(key))
+            return *this->tile_cache_.object(key);
+    }
+
+    // Cache miss — render via GDAL
+    QByteArray tile = this->renderTileFromGDAL(z, x, y);
+
+    // Cache the result — even empty tiles, to avoid re-hitting GDAL
+    // for out-of-bounds requests
+    {
+        QMutexLocker lock(&this->cache_mutex_);
+        this->tile_cache_.insert(key, new QByteArray(tile));
+    }
+
+    return tile;
+}
+
+QByteArray BackendController::renderTileFromGDAL(int z, int x, int y)
+{
+
+    GDALDataset* ds = this->acquireDataset();
+    if (!ds) return {};
+    
+    // if (!this->gdal_dataset_)
+    //     return {};
+
+    const int TILE = 256;
+
+    // --- 1. Convert XYZ tile to Web Mercator bounds ---
+    const double PI = M_PI;
+    const double n  = std::pow(2.0, z);
+
+    const double lonWest  =  (double)x       / n * 360.0 - 180.0;
+    const double lonEast  =  (double)(x + 1) / n * 360.0 - 180.0;
+    const double latNorth = std::atan(std::sinh(PI * (1.0 - 2.0 * (double)y       / n))) * 180.0 / PI;
+    const double latSouth = std::atan(std::sinh(PI * (1.0 - 2.0 * (double)(y + 1) / n))) * 180.0 / PI;
+
+    auto lonToMercX = [](double lon) {
+        return lon * 20037508.342789244 / 180.0;
+    };
+    auto latToMercY = [&PI](double lat) {
+        return std::log(std::tan(PI / 4.0 + lat * PI / 360.0))
+               * 20037508.342789244 / PI;
+    };
+
+    const double tileMinX = lonToMercX(lonWest);
+    const double tileMaxX = lonToMercX(lonEast);
+    const double tileMinY = latToMercY(latSouth);
+    const double tileMaxY = latToMercY(latNorth);
+
+    // --- 2. Get VRT extent ---
+    double gt[6];
+    ds->GetGeoTransform(gt);
+
+    const int    dsW    = ds->GetRasterXSize();
+    const int    dsH    = ds->GetRasterYSize();
+    const double dsMinX = gt[0];
+    const double dsMaxX = gt[0] + dsW  * gt[1];
+    const double dsMaxY = gt[3];
+    const double dsMinY = gt[3] + dsH  * gt[5];  // gt[5] is negative
+
+    // --- 3. Early exit if no intersection ---
+    if (tileMaxX <= dsMinX || tileMinX >= dsMaxX ||
+        tileMaxY <= dsMinY || tileMinY >= dsMaxY)
+        return {};
+
+    // --- 4. Compute intersection in VRT pixel space ---
+    const double interMinX = std::max(tileMinX, dsMinX);
+    const double interMaxX = std::min(tileMaxX, dsMaxX);
+    const double interMinY = std::max(tileMinY, dsMinY);
+    const double interMaxY = std::min(tileMaxY, dsMaxY);
+
+    // Pixel coordinates within the VRT
+    const double pxPerMeterX =  dsW / (dsMaxX - dsMinX);
+    const double pxPerMeterY =  dsH / (dsMaxY - dsMinY);
+
+    const int srcX = std::max(0, (int)std::floor((interMinX - dsMinX) * pxPerMeterX));
+    const int srcY = std::max(0, (int)std::floor((dsMaxY - interMaxY) * pxPerMeterY));
+    const int srcW = std::max(1, std::min((int)std::ceil((interMaxX - interMinX) * pxPerMeterX), dsW - srcX));
+    const int srcH = std::max(1, std::min((int)std::ceil((interMaxY - interMinY) * pxPerMeterY), dsH - srcY));
+
+    // --- 5. Compute destination sub-region in 256x256 tile ---
+    const double tileW = tileMaxX - tileMinX;
+    const double tileH = tileMaxY - tileMinY;
+
+    const int dstX = std::max(0, (int)std::floor((interMinX - tileMinX) / tileW * TILE));
+    const int dstY = std::max(0, (int)std::floor((tileMaxY - interMaxY) / tileH * TILE));
+    const int dstW = std::max(1, std::min((int)std::ceil((interMaxX - interMinX) / tileW * TILE), TILE - dstX));
+    const int dstH = std::max(1, std::min((int)std::ceil((interMaxY - interMinY) / tileH * TILE), TILE - dstY));
+
+    // --- 6. RasterIO — GDAL selects correct overview automatically ---
+    // This is the key benefit of the Warped VRT: one simple read call,
+    // GDAL handles reprojection and overview selection internally
+    const int bandCount = std::min(ds->GetRasterCount(), 4);
+
+    std::vector<uint8_t> subBuffer(dstW * dstH * 4, 0);
+
+    // Always read into RGBA layout
+    // int bandMap[4] = {1, 2, 3, bandCount == 4 ? 4 : 0};
+
+    CPLErr err = ds->RasterIO(
+        GF_Read,
+        srcX, srcY,         // Source offset in VRT pixel space
+        srcW, srcH,         // Source region size — VRT reprojects on the fly
+        subBuffer.data(),
+        dstW, dstH,         // Scale to destination — VRT picks right overview
+        GDT_Byte,
+        bandCount >= 3 ? 3 : bandCount,  // Read RGB(A) only
+        nullptr,            // nullptr = read bands 1,2,3 in order
+        4,                  // Pixel stride
+        dstW * 4,           // Line stride
+        1                   // Band stride
+    );
+
+    if (err != CE_None)
+        return {};
+
+    // Fill alpha if source is RGB only
+    if (bandCount == 3) {
+        for (int i = 0; i < dstW * dstH; i++)
+            subBuffer[i * 4 + 3] = 255;
+    }
+
+    // --- 7. Blit into full transparent 256x256 tile ---
+    std::vector<uint8_t> outPixels(TILE * TILE * 4, 0);
+
+    for (int row = 0; row < dstH; row++) {
+        std::memcpy(
+            outPixels.data() + ((dstY + row) * TILE + dstX) * 4,
+            subBuffer.data() +  (row         * dstW)        * 4,
+            dstW * 4
+        );
+    }
+
+    // --- 8. Encode to PNG ---
+    QImage img(outPixels.data(), TILE, TILE,
+               TILE * 4, QImage::Format_RGBA8888);
+
+    QByteArray out;
+    QBuffer    buf(&out);
+    buf.open(QIODevice::WriteOnly);
+    img.save(&buf, "PNG");
+
+    this->releaseDataset(ds);
+
+    return out;
+}
+
+GDALDataset* BackendController::acquireDataset()
+{
+    QMutexLocker lock(&this->dataset_mutex_);
+    if (!this->dataset_pool_.isEmpty())
+        return this->dataset_pool_.takeLast();
+
+     QByteArray bytes = this->cog_path_.toUtf8();
+
+    // Open a fresh handle to the same VRT/COG
+    return (GDALDataset*)GDALOpen(bytes.constData(), GA_ReadOnly);
+}
+
+void BackendController::releaseDataset(GDALDataset* ds)
+{
+    QMutexLocker lock(&this->dataset_mutex_);
+    this->dataset_pool_.append(ds);
+}
+
+void BackendController::cleanupPreviousSession()
+{
+    // Must be called from main thread
+    if (this->qtcp_server_) {
+        this->qtcp_server_->close();
+        this->qtcp_server_->deleteLater();
+        this->qtcp_server_ = nullptr;
+    }
+
+    if (this->gdal_dataset_) {
+        GDALClose(this->gdal_dataset_);
+        this->gdal_dataset_ = nullptr;
+    }
+
+    {
+        QMutexLocker lock(&this->cache_mutex_);
+        this->tile_cache_.clear();
+    }
+
+    // Clean up temp files from previous session
+    QStringList tmpFiles = {
+        QDir::tempPath() + "/ortho_3857.tif",
+        QDir::tempPath() + "/ortho_cog.tif"
+    };
+    for (const QString& f : tmpFiles) {
+        if (QFile::exists(f))
+            QFile::remove(f);
+    }
+
+    this->ortho_tile_url_.clear();
+}
+
+void BackendController::setOrthoProgress(double prog, const QString& status)
+{
+    this->ortho_progress_ = prog;
+    this->ortho_status_   = status;
+    // Marshal back to main thread for QML
+    QMetaObject::invokeMethod(this, [this]() {
+        emit orthoProgressChanged();
+        emit orthoStatusChanged();
+    }, Qt::QueuedConnection);
+}
+
 void BackendController::send_ack(AckType type)
 {
 
@@ -885,28 +1356,28 @@ void BackendController::send_ack(AckType type)
 
 void BackendController::startMission()
 {
-    qDebug() << "Start Mission Button Pressed";
+    // qDebug() << "Start Mission Button Pressed";
     uint8_t mission_state = static_cast<uint8_t>(StartMission::mission_start);
     this->sendStartMission(mission_state);
 }
 
 void BackendController::resumeMission()
 {
-    qDebug() << "Resume Mission Button Pressed";
+    // qDebug() << "Resume Mission Button Pressed";
     uint8_t mission_state = static_cast<uint8_t>(StartMission::mission_resume);
     this->sendStartMission(mission_state);  
 }
 
 void BackendController::endMission()
 {
-    qDebug() << "End Mission Button Pressed";
+    // qDebug() << "End Mission Button Pressed";
     uint8_t mission_state = static_cast<uint8_t>(StartMission::mission_end);
     this->sendStartMission(mission_state); 
 }
 
 void BackendController::startScan()
 {
-    qDebug() << "Start Scan Button Pressed";
+    // qDebug() << "Start Scan Button Pressed";
     scan_state_ = StartScan::scan_on;
     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_on);
     this->sendStartScan(scan_state);
@@ -914,7 +1385,7 @@ void BackendController::startScan()
 
 void BackendController::stopScan()
 {
-    qDebug() << "Stop Scan Button Pressed";
+    // qDebug() << "Stop Scan Button Pressed";
     scan_state_ = StartScan::scan_off;
     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_off);
     this->sendStartScan(scan_state);
@@ -922,7 +1393,7 @@ void BackendController::stopScan()
 
 void BackendController::emTubeSeasoning()
 {
-    qDebug() << "Tube Seasoning Button Pressed";
+    // qDebug() << "Tube Seasoning Button Pressed";
     scan_state_ = StartScan::scan_tube_season;
     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_tube_season);
     this->sendStartScan(scan_state);
@@ -930,7 +1401,7 @@ void BackendController::emTubeSeasoning()
 
 void BackendController::killScan()
 {
-    qDebug() << "Kill Scan Button Pressed";
+    // qDebug() << "Kill Scan Button Pressed";
     scan_state_ = StartScan::scan_hard_kill;
     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_hard_kill);
     this->sendStartScan(scan_state);
@@ -938,7 +1409,7 @@ void BackendController::killScan()
 
 void BackendController::payloadCal()
 {
-    qDebug() << "Payload Calibration Button Pressed";
+    // qDebug() << "Payload Calibration Button Pressed";
     scan_state_ = StartScan::scan_cal;
     uint8_t scan_state = static_cast<uint8_t>(StartScan::scan_cal);
     this->sendStartScan(scan_state);

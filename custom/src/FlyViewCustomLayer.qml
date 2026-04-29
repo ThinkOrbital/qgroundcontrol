@@ -1,6 +1,8 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import QtLocation
 import QtPositioning
 
@@ -685,6 +687,133 @@ Item {
         }
     }
 
+    // -------------------------------------------------------
+    // File picker dialog
+    // -------------------------------------------------------
+    FileDialog {
+        id:          fileDialog
+        title:       "Select Orthomosaic GeoTIFF"
+        nameFilters: ["GeoTIFF files (*.tif *.tiff)", "All files (*)"]
+        currentFolder: StandardPaths.writableLocation(StandardPaths.HomeLocation)
+        onAccepted: {
+            const path = selectedFile.toString()
+            backend.loadGeoTiff(path)
+        }
+    }
+
+    QGCGroupBox{
+        id: orthoMosaicInput
+        anchors.left: detectorStatusDropdown.right
+        anchors.top: statusBar.bottom
+        anchors.topMargin: _toolsMargin/2
+
+        background: Rectangle {
+            color:        Qt.rgba(qgcPal.window.r, qgcPal.window.g, qgcPal.window.b, 0.6)  // 0.0 = fully transparent, 1.0 = fully opaque
+            radius:       ScreenTools.defaultFontPixelWidth * 0.75
+            border.color: Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
+            border.width: 1
+        }
+
+        ColumnLayout{
+            Layout.fillWidth: true
+
+            // ================= ORTHOMOSAIC DROPDOWN ================
+            // Header row
+            RowLayout {
+                Layout.fillWidth: true
+
+                QGCLabel {
+                    id:             orthoHeader
+                    text:           (orthoExpanded ? "▼ " : "▶ ") + "Orthomosaic Input"
+                    font.pointSize: ScreenTools.smallFontPointSize
+                    font.bold:      true
+
+                    property bool orthoExpanded: false
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked:    parent.orthoExpanded = !parent.orthoExpanded
+                    }
+                }
+            }
+            
+            // Divider
+            Rectangle {
+                Layout.fillWidth: true
+                height:           1
+                color:            Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
+            }
+
+            ColumnLayout {
+                visible: orthoHeader.orthoExpanded
+                Layout.fillWidth: true
+                spacing: 2
+
+                QGCButton {
+                    id:      loadButton
+                    text:    "Load Ortho..."
+                    enabled: !backend.orthoProcessing
+                    //width:   110
+                    onClicked: fileDialog.open()
+                }
+
+                QGCLabel {
+                    id:                     orthoFileNameLabel
+                    text:                   backend.orthoFileName.length > 0
+                                                ? backend.orthoFileName
+                                                : "No file selected"
+                    color:                  backend.orthoFileName.length > 0
+                                                ? "white"
+                                                : "#88ffffff"
+                    //anchors.verticalCenter: parent.verticalCenter
+                }
+
+                // Track
+                Rectangle {
+                    width:  parent.width
+                   // height: 8
+                   // radius: 4
+                    color:  "#44ffffff"
+
+                    // Fill
+                    Rectangle {
+                        width:  parent.width * (backend.orthoProgress / 100.0)
+                        height: parent.height
+                        radius: parent.radius
+                        color:  "#4CAF50"
+
+                        Behavior on width {
+                            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                        }
+                    }
+                }
+
+                // Status text
+                QGCLabel {
+                    text:  Math.round(backend.orthoProgress) + "% — " + backend.orthoStatus
+                    color: "#ccffffff"
+                    font.pixelSize: 12
+                    width: parent.width
+                    elide: Text.ElideRight
+                }
+
+                // Cancel button
+                QGCButton {
+                    text:  "Cancel"
+                    width: parent.width
+                    onClicked: backend.cancelOrtho()
+                }
+
+                QGCLabel {
+                    visible: backend.orthoReady && !backend.orthoProcessing
+                    text:    "✓ Ortho loaded — tile server ready"
+                    color:   "#4CAF50"
+                    font.pixelSize: 12
+                }
+            }
+        }
+    }
+
     QGCGroupBox{
         id: scanMissionButtons
         anchors.left: parent.left
@@ -714,22 +843,6 @@ Item {
                 onClicked: backend.stopScan()
                 enabled: backend.isStopScanButtonEn
 
-                // Make button red
-               /* background: Rectangle {
-                    color: "red"
-                    radius: 4
-                    border.color: "darkred"
-                    border.width: 1
-                }
-
-                // Optional: change text color to white for contrast
-                contentItem: Text {
-                    text: qsTr("Stop Scan")
-                    color: "white"
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }*/
             }
 
             QGCButton {
@@ -948,6 +1061,7 @@ Item {
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.6) : qgcPal.buttonBorder)
                 }           
             }
+
         }
     }
 

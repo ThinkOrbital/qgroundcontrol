@@ -5,6 +5,8 @@
 
 message(STATUS "QGC: Adding Custom Plugin")
 
+find_package(GDAL REQUIRED)
+
 # ============================================================================
 # Custom Android Package Template
 # ============================================================================
@@ -112,6 +114,7 @@ set(CUSTOM_SOURCES
 # Custom libraries to link
 set(CUSTOM_LIBRARIES
     CustomModule
+    ${GDAL_LIBRARIES}
     CACHE INTERNAL "" FORCE
 )
 
@@ -120,6 +123,7 @@ set(CUSTOM_INCLUDE_DIRECTORIES
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/AutoPilotPlugin
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/FirmwarePlugin
+    ${GDAL_INCLUDE_DIRS}
     CACHE INTERNAL "" FORCE
 )
 
