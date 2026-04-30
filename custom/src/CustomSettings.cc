@@ -1,9 +1,7 @@
 
 #include "CustomSettings.h"
 
-DECLARE_SETTINGGROUP(Custom, "Custom")
-{
-}
+DECLARE_SETTINGGROUP(Custom, "Custom") {}
 
 DECLARE_SETTINGSFACT(CustomSettings, separationDistance)
 DECLARE_SETTINGSFACT(CustomSettings, bearing)

@@ -39,6 +39,11 @@ CustomPlugin::CustomPlugin(QObject *parent)
 
     _showAdvancedUI = false;
     (void) connect(this, &QGCCorePlugin::showAdvancedUIChanged, this, &CustomPlugin::_advancedChanged);
+}
+
+void CustomPlugin::init()
+{
+    // If this goes in the constructor, it causes a deadlock.
     _customSettings = new CustomSettings(nullptr);
 }
 

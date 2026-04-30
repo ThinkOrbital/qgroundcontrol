@@ -68,6 +68,7 @@ public:
     // Overrides from QGCCorePlugin
 
     void cleanup() final;
+    void init() final;
     QGCOptions *options() final { return _options; }
     QString brandImageIndoor() const final { return QStringLiteral("/custom/img/dronecode-white.svg"); }
     QString brandImageOutdoor() const final { return QStringLiteral("/custom/img/dronecode-black.svg"); }

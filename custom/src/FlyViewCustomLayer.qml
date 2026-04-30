@@ -52,18 +52,19 @@ Item {
         : false
     property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
 
-    property var _sepDistFact: QGroundControl.settingsManager.customSettings.separationDistance
-    property var _bearingFact: QGroundControl.settingsManager.customSettings.bearing
-    property var _goalAltitudeFact: QGroundControl.settingsManager.customSettings.altitude
-    property var _detOffsetFact: QGroundControl.settingsManager.customSettings.detOffset
-    property var _emAltOffsetFact: QGroundControl.settingsManager.customSettings.emAltOffset
-    property var _flightAltFact: QGroundControl.settingsManager.customSettings.flightAlt
-    property var _flightVelFact: QGroundControl.settingsManager.customSettings.flightVel
-    property var _goalLatFact: QGroundControl.settingsManager.customSettings.goalLat
-    property var _goalLonFact: QGroundControl.settingsManager.customSettings.goalLon
-    property var _numImagesFact: QGroundControl.settingsManager.customSettings.numImages
-    property var _fileNameFact: QGroundControl.settingsManager.customSettings.fileName
-    property var _detectorXrayWindowFact: QGroundControl.settingsManager.customSettings.detectorXrayWindow
+    property var  _customSettings:  QGroundControl.corePlugin.customSettings
+    property var _sepDistFact: _customSettings.separationDistance
+    property var _bearingFact: _customSettings.bearing
+    property var _goalAltitudeFact: _customSettings.altitude
+    property var _detOffsetFact: _customSettings.detOffset
+    property var _emAltOffsetFact: _customSettings.emAltOffset
+    property var _flightAltFact: _customSettings.flightAlt
+    property var _flightVelFact: _customSettings.flightVel
+    property var _goalLatFact: _customSettings.goalLat
+    property var _goalLonFact: _customSettings.goalLon
+    property var _numImagesFact: _customSettings.numImages
+    property var _fileNameFact: _customSettings.fileName
+    property var _detectorXrayWindowFact: _customSettings.detectorXrayWindow
 
 
     function secondsToHHMMSS(timeS) {
