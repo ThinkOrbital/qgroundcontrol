@@ -25,7 +25,6 @@
 #include "MavlinkSettings.h"
 #include "JoystickManagerSettings.h"
 #include "Viewer3DSettings.h"
-#include "CustomSettings.h"
 #include "JsonHelper.h"
 #include "JsonParsing.h"
 #include "QGCCorePlugin.h"
@@ -87,7 +86,6 @@ void SettingsManager::init()
     _mavlinkSettings = new MavlinkSettings(this);
     _joystickManagerSettings = new JoystickManagerSettings(this);
     _viewer3DSettings = new Viewer3DSettings(this);
-    _customSettings = new CustomSettings(this);
     _adsbVehicleManagerSettings = new ADSBVehicleManagerSettings(this);
 #ifndef QGC_NO_ARDUPILOT_DIALECT
     _apmMavlinkStreamRateSettings = new APMMavlinkStreamRateSettings(this);
@@ -119,7 +117,6 @@ VideoSettings *SettingsManager::videoSettings() const { return _videoSettings; }
 MavlinkSettings *SettingsManager::mavlinkSettings() const { return _mavlinkSettings; }
 JoystickManagerSettings *SettingsManager::joystickManagerSettings() const { return _joystickManagerSettings; }
 Viewer3DSettings *SettingsManager::viewer3DSettings() const { return _viewer3DSettings; }
-CustomSettings *SettingsManager::customSettings() const { return _customSettings; }
 
 void SettingsManager::_loadSettingsFiles()
 {

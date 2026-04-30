@@ -39,6 +39,7 @@ CustomPlugin::CustomPlugin(QObject *parent)
 
     _showAdvancedUI = false;
     (void) connect(this, &QGCCorePlugin::showAdvancedUIChanged, this, &CustomPlugin::_advancedChanged);
+    _customSettings = new CustomSettings(nullptr);
 }
 
 QGCCorePlugin *CustomPlugin::instance()

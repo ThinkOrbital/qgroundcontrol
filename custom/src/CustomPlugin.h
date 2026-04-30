@@ -6,6 +6,7 @@
 #include "AutoPilotPlugins/AutoPilotPlugin.h"
 #include "AutoPilotPlugins/VehicleComponent.h"
 
+#include "CustomSettings.h"
 #include "QGCCorePlugin.h"
 #include "QGCOptions.h"
 #include "BackendController.h"
@@ -77,6 +78,8 @@ public:
     void paletteOverride(const QString &colorName, QGCPalette::PaletteColorInfo_t &colorInfo) final;
     /// We override this so we can get access to QQmlApplicationEngine and use it to register our qml module
     QQmlApplicationEngine *createQmlApplicationEngine(QObject *parent) final;
+    Q_PROPERTY(CustomSettings* customSettings READ customSettings CONSTANT);
+    CustomSettings* customSettings  () { return _customSettings; }
 
 private slots:
     void _advancedChanged(bool advanced);
@@ -89,6 +92,7 @@ private:
     QQmlApplicationEngine *_qmlEngine = nullptr;
     class CustomOverrideInterceptor *_selector = nullptr;
     QVariantList _customSettingsList; // Not to be mixed up with QGCCorePlugin implementation
+    CustomSettings* _customSettings;
 };
 
 /*===========================================================================*/
