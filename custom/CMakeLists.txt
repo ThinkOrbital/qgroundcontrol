@@ -96,6 +96,8 @@ qt_add_qml_module(CustomModule
 set(CUSTOM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/BackendController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/BackendController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/OrthoBackend.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/OrthoBackend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/CustomPlugin.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/CustomPlugin.h
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/AutoPilotPlugin/CustomAutoPilotPlugin.cc

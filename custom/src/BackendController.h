@@ -8,10 +8,6 @@
 #include <QQuaternion>
 #include <QDateTime>
 #include <QMap>
-#include <QFuture>
-#include <QTcpServer>
-#include <QTcpSocket>
-#include <QCache>
 #include <QRegularExpression>
 
 #include "QGCApplication.h"
@@ -158,15 +154,6 @@ class BackendController : public QObject {
 
     Q_PROPERTY(QString flightStatus READ flightStatus WRITE setFlightStatus NOTIFY flightStatusChanged)
 
-    //Orthomosaic display
-    Q_PROPERTY(double orthoProgress READ orthoProgress NOTIFY orthoProgressChanged)
-    Q_PROPERTY(double orthoOpacity READ orthoOpacity WRITE setOrthoOpacity NOTIFY orthoOpacityChanged)
-    Q_PROPERTY(QString orthoStatus READ orthoStatus NOTIFY orthoStatusChanged)
-    Q_PROPERTY(QString orthoTileUrl READ orthoTileUrl NOTIFY orthoReadyChanged)
-    Q_PROPERTY(QString orthoFileName READ orthoFileName NOTIFY orthoFileNameChanged)
-    Q_PROPERTY(bool orthoReady READ orthoReady NOTIFY orthoReadyChanged)
-    Q_PROPERTY(bool orthoProcessing READ orthoProcessing NOTIFY orthoProcessingChanged)
-
 
 public:
     explicit BackendController(QObject *parent = nullptr);
@@ -270,7 +257,6 @@ public:
     bool isStopScanButtonEn() const { return this->isStopScanButtonEn_; }
     bool isSendGoalButtonEn() const { return this->isSendGoalButtonEn_; }
     bool isEndMissionButtonEn() const { return this->isEndMissionButtonEn_; }
-    
 
     //payload settings
     uint32_t emitterTelemetryCadenceMs() const { return this->em_telem_cadence_ms_; }
@@ -303,16 +289,7 @@ public:
     uint8_t detBatPerc() const {return this->det_battery_charge_; }
 
     QString flightStatus() const {return this->flight_status_; }
-    
-    //orthomosaic 
-    double orthoProgress() const {return this->ortho_progress_; }
-    double orthoOpacity() const {return this->ortho_opacity_; }
-    QString orthoStatus() const {return this->ortho_status_; }
-    QString orthoTileUrl() const {return this->ortho_tile_url_; }
-    QString orthoFileName() const {return this->ortho_file_name_; }
-    bool orthoReady() const {return this->ortho_ready_; }
-    bool orthoProcessing() const {return this->ortho_processing_; }
-    void cancelOrtho() { this->ortho_cancelled_ = true; };
+
 
     //enable/disable buttons
     Q_INVOKABLE void setStartMissionButtonEn(const bool enabled);
@@ -362,9 +339,7 @@ public:
     Q_INVOKABLE void setFlightStatus(const QString flightstatus);
 
     //Orthomosaic map overlay
-    Q_INVOKABLE void loadGeoTiff(const QString& path);
-    // Q_INVOKABLE void cancel();
-    Q_INVOKABLE void setOrthoOpacity(const double opacity) { ortho_opacity_ = opacity; }
+
 
 signals:
     void scanMissionModeChanged();
@@ -430,15 +405,6 @@ signals:
 
     void flightStatusChanged();
 
-    //orthomosaic map
-    void orthoProgressChanged();
-    void orthoOpacityChanged();
-    void orthoStatusChanged();
-    void orthoReadyChanged();
-    void orthoProcessingChanged();
-    void orthoFileNameChanged();
-    void errorOccurred(const QString& message);
-
 private slots:
     void _mavlinkMessageReceived(LinkInterface* link, mavlink_message_t message);
     void _vehicleAdded(Vehicle* vehicle);
@@ -448,21 +414,6 @@ private:
 
     void sendStartMission(uint8_t & state);
     void sendStartScan(uint8_t & state);
-
-    //Orthomosaic Steps
-    bool stepValidateAndOpen(const QString& path); // ~0-5%
-    bool stepReprojectToWebMercator(); // ~5-40%
-    bool stepBuildOverviews(); // ~40-70%
-    bool stepConvertToCOG(); // ~70-85%
-    bool stepStartTileServer(); // ~85-100%
-
-    void handleTileRequest(QTcpSocket* socket, const QByteArray& request);
-    QByteArray renderTile(int32_t z, int32_t x, int32_t y);
-    QByteArray renderTileFromGDAL(int32_t z, int32_t x, int32_t y);
-    void cleanupPreviousSession();
-    void setOrthoProgress(double prog, const QString& status);
-    GDALDataset* acquireDataset();
-    void releaseDataset(GDALDataset* ds);
 
     // std::unique_ptr<DroneControl> ctrl;
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
@@ -516,25 +467,6 @@ private:
     QString em_model_ {};
     QString em_serial_ {};
     QString flight_status_ {"Waiting for Connection..."};
-
-    //ortho settings
-    GDALDataset* gdal_dataset_ {nullptr};
-    QTcpServer* qtcp_server_ {nullptr};
-    QCache<QString, QByteArray> tile_cache_{200};
-    QMutex cache_mutex_;
-    QMutex dataset_mutex_;
-    QList<GDALDataset*> dataset_pool_;
-    QFuture<void> future_;
-    QString cog_path_;
-
-    double ortho_progress_ {0.0};
-    double ortho_opacity_ {0.75};
-    QString ortho_status_ {};
-    QString ortho_tile_url_ {};
-    QString ortho_file_name_ {};
-    bool ortho_ready_ {false};
-    bool ortho_processing_ {false};
-    bool ortho_cancelled_ {false};
 
     // Vehicle positions keyed by SYSID
     std::map<uint8_t, QGeoCoordinate> positions_;

@@ -280,6 +280,13 @@ QQmlApplicationEngine* CustomPlugin::createQmlApplicationEngine(QObject* parent)
         "backend",
         _backendController);
 
+    _orthoBackend = new OrthomosaicBackend(this);
+
+    _qmlEngine->rootContext()->setContextProperty(
+        "ortho",
+        _orthoBackend
+    );
+
     _selector = new CustomOverrideInterceptor();
     _qmlEngine->addUrlInterceptor(_selector);
 

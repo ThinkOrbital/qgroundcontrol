@@ -369,121 +369,6 @@ Item {
         }
     }     
 
-    /*QGCGroupBox {
-        id: emitterDropdown
-        anchors.left: uavDropdown.right
-        anchors.top: statusBar.bottom
-        anchors.topMargin: _toolsMargin/2
-        //anchors.leftMargin: parentToolInsets.leftEdgeTopInset + uavDropdown.width + targetDropdown.width + 2*nudgeBox.width + 2*_toolsMargin
-        //width: parentToolInsets.leftEdgeTopInset - _toolsMargin
-
-        background: Rectangle {
-            color:        Qt.rgba(qgcPal.window.r, qgcPal.window.g, qgcPal.window.b, 0.4)  // 0.0 = fully transparent, 1.0 = fully opaque
-            radius:       ScreenTools.defaultFontPixelWidth * 0.75
-            border.color: Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
-            border.width: 1
-        }
-
-        ColumnLayout{
-            Layout.fillWidth: true
-            
-            // ================= EMITTER DROPDOWN ================
-            // Header row
-            RowLayout {
-                Layout.fillWidth: true
-
-                QGCLabel {
-                    id:             emitterHeader
-                    text:           (emitterExpanded ? "▼ " : "▶ ") + "Emitter Info"
-                    font.pointSize: ScreenTools.smallFontPointSize
-                    font.bold:      true
-
-                    property bool emitterExpanded: false
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked:    parent.emitterExpanded = !parent.emitterExpanded
-                    }
-                }
-            }
-            
-            // Divider
-            Rectangle {
-                Layout.fillWidth: true
-                height:           1
-                color:            Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
-            }
-
-            ColumnLayout {
-                visible: emitterHeader.emitterExpanded
-                Layout.fillWidth: true
-                spacing: 2
-
-                QGCLabel { text: "Test duration" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterTestDurationMs
-                    onEditingFinished:
-                        backend.emitterTestDurationMs = text
-                }
-
-                QGCLabel { text: "Telemetry cadence" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterTelemetryCadenceMs
-                    onEditingFinished:
-                        backend.emitterTelemetryCadenceMs = text
-                }
-
-                QGCLabel { text: "X-ray exposure" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterXrayExposureMs
-                    onEditingFinished:
-                        backend.emitterXrayExposureMs = text
-                }
-
-                QGCLabel { text: "X-ray voltage" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "kV"
-                    showUnits: true
-                    text: backend.emitterXrayVoltageKv
-                    onEditingFinished:
-                        backend.emitterXrayVoltageKv = text
-                }
-
-                QGCLabel { text: "X-ray current" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "µA"
-                    showUnits: true
-                    text: backend.emitterXrayCurrentUa
-                    onEditingFinished:
-                        backend.emitterXrayCurrentUa = text
-                }
-
-                QGCLabel { text: "X-ray comms timeout" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterCommsBlockTimeoutMs
-                    onEditingFinished:
-                        backend.emitterCommsBlockTimeoutMs = text
-                }
-                
-            }
-        }
-    }*/
-
-
     QGCGroupBox {
         id: detectorDropdown
         anchors.left: uavDropdown.right
@@ -697,7 +582,7 @@ Item {
         currentFolder: StandardPaths.writableLocation(StandardPaths.HomeLocation)
         onAccepted: {
             const path = selectedFile.toString()
-            backend.loadGeoTiff(path)
+            ortho.loadGeoTiff(path)
         }
     }
 
@@ -752,17 +637,17 @@ Item {
                 QGCButton {
                     id:      loadButton
                     text:    "Load Ortho..."
-                    enabled: !backend.orthoProcessing
+                    enabled: !ortho.orthoProcessing
                     //width:   110
                     onClicked: fileDialog.open()
                 }
 
                 QGCLabel {
                     id:                     orthoFileNameLabel
-                    text:                   backend.orthoFileName.length > 0
-                                                ? backend.orthoFileName
+                    text:                   ortho.orthoFileName.length > 0
+                                                ? ortho.orthoFileName
                                                 : "No file selected"
-                    color:                  backend.orthoFileName.length > 0
+                    color:                  ortho.orthoFileName.length > 0
                                                 ? "white"
                                                 : "#88ffffff"
                     //anchors.verticalCenter: parent.verticalCenter
@@ -777,7 +662,7 @@ Item {
 
                     // Fill
                     Rectangle {
-                        width:  parent.width * (backend.orthoProgress / 100.0)
+                        width:  parent.width * (ortho.orthoProgress / 100.0)
                         height: parent.height
                         radius: parent.radius
                         color:  "#4CAF50"
@@ -790,7 +675,7 @@ Item {
 
                 // Status text
                 QGCLabel {
-                    text:  Math.round(backend.orthoProgress) + "% — " + backend.orthoStatus
+                    text:  Math.round(ortho.orthoProgress) + "% — " + ortho.orthoStatus
                     color: "#ccffffff"
                     font.pixelSize: 12
                     width: parent.width
@@ -801,11 +686,11 @@ Item {
                 QGCButton {
                     text:  "Cancel"
                     width: parent.width
-                    onClicked: backend.cancelOrtho()
+                    onClicked: ortho.cancelOrtho()
                 }
 
                 QGCLabel {
-                    visible: backend.orthoReady && !backend.orthoProcessing
+                    visible: ortho.orthoReady && !ortho.orthoProcessing
                     text:    "✓ Ortho loaded — tile server ready"
                     color:   "#4CAF50"
                     font.pixelSize: 12

@@ -70,7 +70,7 @@ Item {
         id:                 mapHolder
         anchors.fill:       parent
 
-        property var _activeTiles: ({})
+        /*property var _activeTiles: ({})
         property var _tilePool:    []
 
         function lonToTileX(lon, z) {
@@ -92,19 +92,34 @@ Item {
         }
 
         function updateTiles() {
-            if (!backend.orthoReady) return
-            if (!backend.orthoTileUrl || backend.orthoTileUrl === "") return
-
+            if (!ortho.orthoReady) return
+            if (!ortho.orthoTileUrl || ortho.orthoTileUrl === "") return
+        
             var z      = Math.floor(mapControl.zoomLevel)
             var BUFFER = 1
 
+            console.log("Zoom:", z)
+
             var nw = mapControl.toCoordinate(Qt.point(0, 0))
             var se = mapControl.toCoordinate(Qt.point(mapControl.width, mapControl.height))
+
+            console.log("NW corner:", nw.latitude, nw.longitude)
+            console.log("SE corner:", se.latitude, se.longitude)
 
             var xMin = lonToTileX(nw.longitude, z) - BUFFER
             var xMax = lonToTileX(se.longitude, z) + BUFFER
             var yMin = latToTileY(nw.latitude,  z) - BUFFER
             var yMax = latToTileY(se.latitude,  z) + BUFFER
+
+            console.log("Tile range X:", xMin, "to", xMax)
+            console.log("Tile range Y:", yMin, "to", yMax)
+
+            // Manually verify tile for known dataset lon
+            var datasetLon = -105.2265  // gt[0] converted to degrees
+            var expectedX = Math.floor((datasetLon + 180.0) / 360.0 * Math.pow(2, z))
+            console.log("Expected tile X for dataset west edge:", expectedX)
+            console.log("NW corner tile X:", lonToTileX(nw.longitude, z))
+            console.log("NW corner lon:", nw.longitude)
 
             var neededKeys = {}
             for (var tx = xMin; tx <= xMax; tx++) {
@@ -122,13 +137,14 @@ Item {
                     delete _activeTiles[key]
                 }
             }
-
+            console.log("Total tiles to request:", Object.keys(neededKeys).length)
             // Assign or create tiles
             for (var k in neededKeys) {
+                console.log("Requesting tile:", k)
                 if (k in _activeTiles) continue
 
                 var t   = neededKeys[k]
-                var url = backend.orthoTileUrl
+                var url = ortho.orthoTileUrl
                             .replace("{z}", t.z)
                             .replace("{x}", t.x)
                             .replace("{y}", t.y)
@@ -172,9 +188,9 @@ Item {
         }
 
         Connections {
-            target: backend
+            target: ortho
             function onOrthoReadyChanged() {
-                if (backend.orthoReady) mapHolder.updateTiles()
+                if (ortho.orthoReady) mapHolder.updateTiles()
                 else                    mapHolder.clearTiles()
             }
         }
@@ -197,8 +213,8 @@ Item {
                     source:   imageUrl
                     width:    256
                     height:   256
-                    opacity:  backend.orthoOpacity
-                    visible:  backend.orthoReady
+                    opacity:  ortho.orthoOpacity
+                    visible:  ortho.orthoReady
                     cache:    true
                     fillMode: Image.Stretch
 
@@ -208,7 +224,7 @@ Item {
                     }
                 }
             }
-        }
+        }*/
 
         FlyViewMap {
             id:                     mapControl
