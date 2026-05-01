@@ -96,9 +96,17 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
     }
 
     //messages coming directly from FCU
-    if((message.sysid == SYSID_EMITTER || message.sysid == SYSID_DETECTOR) && (message.compid != SYSID_EMITTER_COMP && message.compid != SYSID_DETECTOR_COMP))
+    if((message.sysid == SYSID_EMITTER || message.sysid == SYSID_DETECTOR) )
     {
         switch (message.msgid) {
+            case MAVLINK_MSG_ID_HEARTBEAT: {
+                if(message.compid == SYSID_EMITTER_COMP || message.compid == SYSID_DETECTOR_COMP)
+                {
+                    this->subscribed_map_[message.sysid] = true;
+                    this->heartbeat_last_seen_ms_[message.sysid] = QDateTime::currentMSecsSinceEpoch();
+                } 
+                break;
+            }
             case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
                 mavlink_global_position_int_t pos;
                 mavlink_msg_global_position_int_decode(&message, &pos);
@@ -120,21 +128,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 }
                 break;
             }
-        }
-    }
-    
-  
-    if(message.compid == SYSID_EMITTER_COMP || message.compid == SYSID_DETECTOR_COMP)
-    {
-
-        this->subscribed_map_[message.compid] = true;
-
-        switch (message.msgid) {
-
-            case MAVLINK_MSG_ID_HEARTBEAT: {
-                this->heartbeat_last_seen_ms_[message.compid] = QDateTime::currentMSecsSinceEpoch(); 
-                break;
-            }
 
             case MAVLINK_MSG_ID_COOPERATIVE_STATE: {
                 mavlink_cooperative_state_t coop_state;
@@ -142,9 +135,9 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 // store/emit based on sysid
                 qDebug() << "Received coop state of " << coop_state.state << " from sysid " << message.compid;
         
-                this->uav_state_map_[message.compid] = coop_state.state;
+                this->flight_state_map_[message.sysid] = static_cast<FlightState>(coop_state.state);
                 this->uav_state_updated_.store(true);
-                if(coop_state.state == 6) //ToDo: need to add enum for UAV states to QGC
+                if(this->flight_state_map_[message.sysid] == FlightState::operator_input) //ToDo: need to add enum for UAV states to QGC
                 {
                     qDebug() << "Sending out Acknowledge message";
                     this->send_ack(AckType::ack_coop_opin);
@@ -219,18 +212,19 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_msg_ack_t msg_ack;
                 mavlink_msg_msg_ack_decode(&message, &msg_ack);
                 
-                this->msg_ack_map_[message.compid] = static_cast<AckType> (msg_ack.ack_type);
+                this->msg_ack_map_[message.sysid] = static_cast<AckType> (msg_ack.ack_type);
 
-                if(this->subscribed_map_[SYSID_EMITTER_COMP] && this->subscribed_map_[SYSID_DETECTOR_COMP])
+                if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
                 {
-                    if((this->msg_ack_map_[SYSID_EMITTER_COMP] == AckType::ack_target) && (this->msg_ack_map_[SYSID_DETECTOR_COMP] == AckType::ack_target))
+                    if((this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_target) && (this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_target))
                     {
+                        qDebug() << "Setting targMsgSent to true ";
                         this->targMsgSent_ = true;
                         this->uav_state_updated_.store(true);
                     }
                 
                     
-                    if((this->msg_ack_map_[SYSID_EMITTER_COMP] == AckType::ack_scan) && (this->msg_ack_map_[SYSID_DETECTOR_COMP] == AckType::ack_scan))
+                    if((this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan) && (this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan))
                     {
                         qDebug() << "Setting calMsgSent to true ";
                         this->calMsgSent_ = true;
@@ -238,21 +232,21 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                     }
 
                 }
-                else if(this->subscribed_map_[SYSID_EMITTER_COMP] || this->subscribed_map_[SYSID_DETECTOR_COMP])
-                {
-                    if((this->msg_ack_map_[SYSID_EMITTER_COMP] == AckType::ack_target) || (this->msg_ack_map_[SYSID_DETECTOR_COMP] == AckType::ack_target))
-                    {
-                        this->targMsgSent_ = true;
-                        this->uav_state_updated_.store(true);
-                    }
+                // else if(this->subscribed_map_[SYSID_EMITTER] || this->subscribed_map_[SYSID_DETECTOR_COMP])
+                // {
+                //     if((this->msg_ack_map_[SYSID_EMITTER_COMP] == AckType::ack_target) || (this->msg_ack_map_[SYSID_DETECTOR_COMP] == AckType::ack_target))
+                //     {
+                //         this->targMsgSent_ = true;
+                //         this->uav_state_updated_.store(true);
+                //     }
                 
                     
-                    if((this->msg_ack_map_[SYSID_EMITTER_COMP] == AckType::ack_scan) || (this->msg_ack_map_[SYSID_DETECTOR_COMP] == AckType::ack_scan))
-                    {
-                        this->calMsgSent_ = true;
-                        this->uav_state_updated_.store(true);
-                    }
-                }
+                //     if((this->msg_ack_map_[SYSID_EMITTER_COMP] == AckType::ack_scan) || (this->msg_ack_map_[SYSID_DETECTOR_COMP] == AckType::ack_scan))
+                //     {
+                //         this->calMsgSent_ = true;
+                //         this->uav_state_updated_.store(true);
+                //     }
+                // }
        
 
                 break;
@@ -303,31 +297,27 @@ void BackendController::processTelemetryUpdates()
     if(this->uav_state_updated_.load())
     {
      
-        for(const auto& [sysid, state] : this->uav_state_map_)
+        for(const auto& [sysid, state] : this->flight_state_map_)
         {
            
-            qDebug() << "UAV " << +sysid << " changed its state to " << +this->uav_state_map_[sysid];
+            qDebug() << "UAV " << +sysid << " changed its state to " << +static_cast<uint8_t>(this->flight_state_map_[sysid]);
     
-            switch(this->uav_state_map_[sysid])
+            switch(this->flight_state_map_[sysid])
             {
-                case 0: //init state
+                case FlightState::init: //init state
                 {
                     qDebug() << "Inside of init state";
                     qDebug() << "subscribed_map_[" << +sysid << "] = " << subscribed_map_[sysid];
-                    if(this->subscribed_map_[SYSID_EMITTER_COMP]&& this->subscribed_map_[SYSID_DETECTOR_COMP])
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
                     {
-                        if((this->uav_state_map_[SYSID_EMITTER_COMP] == 0) && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0))
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::init))
                         {
                             QString str_flight_status;
-                            // if(targMsgSent_ && (this->uav_state_map_[sysid] == 0) && (this->uav_state_map_[sysid] == 0))
+                     
+                            // if(calMsgSent_ && (this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0))
                             // {
-                                
-                                
+                            //     this->setStartScanButtonEn(false);
                             // }
-                            if(calMsgSent_ && (this->uav_state_map_[SYSID_EMITTER_COMP] == 0) && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0))
-                            {
-                                this->setStartScanButtonEn(false);
-                            }
                             
                             if(targMsgSent_ && calMsgSent_)
                             {
@@ -354,117 +344,164 @@ void BackendController::processTelemetryUpdates()
                             this->setSendGoalButtonEn(true);
                         }
                     } 
-                    else if(this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP])
-                    {
-                        qDebug() << "Inside subscribed_map_ check";
-                        QString str_flight_status;
-                        // if(targMsgSent_ && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0))
-                        // {
-                        //     this->setStartMissionButtonEn(true);
+                    /* Note: this now only works when two drone's are being used... Need to add more logic if we want to fly only 1 UAV */
+                    // else if(this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP])
+                    // {
+                    //     qDebug() << "Inside subscribed_map_ check";
+                    //     QString str_flight_status;
+                    //     // if(targMsgSent_ && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0))
+                    //     // {
+                    //     //     this->setStartMissionButtonEn(true);
                             
-                        // }
-                        if(calMsgSent_ && ((this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0)))
-                        {
-                            this->setStartScanButtonEn(false);
-                        }
+                    //     // }
+                    //     if(calMsgSent_ && ((this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0)))
+                    //     {
+                    //         this->setStartScanButtonEn(false);
+                    //     }
                         
-                        if(targMsgSent_ && calMsgSent_)
-                        {
-                            this->setStartMissionButtonEn(true);
-                            str_flight_status = "Waiting for user to press start mission button.";
-                        }
+                    //     if(targMsgSent_ && calMsgSent_)
+                    //     {
+                    //         this->setStartMissionButtonEn(true);
+                    //         str_flight_status = "Waiting for user to press start mission button.";
+                    //     }
 
-                        if(!targMsgSent_)
-                        {
-                            str_flight_status += "Waiting for user to send target information to UAVs. \n";
-                        }
+                    //     if(!targMsgSent_)
+                    //     {
+                    //         str_flight_status += "Waiting for user to send target information to UAVs. \n";
+                    //     }
 
-                        if(!calMsgSent_)
-                        {
-                            str_flight_status += "Waiting for user to calibrate detector. ";
-                        }
+                    //     if(!calMsgSent_)
+                    //     {
+                    //         str_flight_status += "Waiting for user to calibrate detector. ";
+                    //     }
 
-                        if(!str_flight_status.isEmpty())
-                        {
-                            qDebug() << "Setting flight status to " << str_flight_status;
-                            this->setFlightStatus(str_flight_status);
-                        }
+                    //     if(!str_flight_status.isEmpty())
+                    //     {
+                    //         qDebug() << "Setting flight status to " << str_flight_status;
+                    //         this->setFlightStatus(str_flight_status);
+                    //     }
 
-                        this->setResumeMissionButtonEn(false);
-                        this->setSendGoalButtonEn(true);   
-                    }
+                    //     this->setResumeMissionButtonEn(false);
+                    //     this->setSendGoalButtonEn(true);   
+                    // }
                     break;
                 }
                 case 1: //takeoff state
-                    this->setStartMissionButtonEn(false);
-                    this->setResumeMissionButtonEn(false);
-                    this->setStartScanButtonEn(false);
-                    this->setSendGoalButtonEn(false);
-                    this->setStopScanButtonEn(false);
-                    this->setFlightStatus("UAVs taking off...");
-                    break;
-                case 2: //coord_flight state
-                    this->setStartMissionButtonEn(false);
-                    this->setResumeMissionButtonEn(false);
-                    this->setStartScanButtonEn(false);
-                    this->setSendGoalButtonEn(false);
-                    this->setEndMissionButtonEn(true);
-                    this->setStopScanButtonEn(false);
-                    this->setFlightStatus("UAVs are flying to target...");
-                    break;
-                case 3: //alignment state
-                    this->setStartMissionButtonEn(false);
-                    this->setResumeMissionButtonEn(false);
-                    this->setStartScanButtonEn(false);
-                    this->setSendGoalButtonEn(false);
-                    this->setStopScanButtonEn(false);
-                    this->descend2Targ = false;
-                    this->setFlightStatus("UAVs are aligning...");
-                    break;
-                case 4: //descend state
-                    this->setStartMissionButtonEn(false);
-                    this->setResumeMissionButtonEn(false);
-                    this->setStartScanButtonEn(false);
-                    this->setSendGoalButtonEn(false);
-                    this->setStopScanButtonEn(false);
-                    this->descend2Targ = true;
-                    this->setFlightStatus("UAVs are descending to scan altitude...");
-                    break;
-                case 5: //scan state
-                    this->setStartMissionButtonEn(false);
-                    this->setResumeMissionButtonEn(false);
-                    this->setStartScanButtonEn(false);
-                    this->setSendGoalButtonEn(false);
-                    this->setStopScanButtonEn(false);
-                    switch(this->scan_state_)
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
                     {
-                        case StartScan::scan_off:
-                            this->setFlightStatus("Stopping Scan");
-                            break;
-                        case StartScan::scan_on:
-                            this->setFlightStatus("Performing X-Ray Scan...");
-                            this->setStopScanButtonEn(true);
-                            break;
-                        case StartScan::scan_hard_kill:
-                            this->setFlightStatus("Powering off emitter...");
-                            break;
-                        case StartScan::scan_cal:
-                            this->setFlightStatus("Calibrating Detector...");
-                            break;
-
-                        case StartScan::scan_tube_season:
-                            this->setFlightStatus("Performing Tube Seasoning...");
-                            break;
-                        default:
-                            this->setFlightStatus("Unknown Scan State!");
-                            break;
-
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::takeoff) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::takeoff))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setStopScanButtonEn(false);
+                            this->setEndMissionButtonEn(true);
+                            this->setFlightStatus("UAVs taking off...");
+                        }
                     }
                     break;
-                case 6: //operator input state
-                    if(this->subscribed_map_[sysid] && this->subscribed_map_[sysid])
+                }
+                case 2: //coord_flight state
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
                     {
-                        if((this->uav_state_map_[sysid] == 6) && (this->uav_state_map_[sysid] == 6))
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::coord_flight) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::coord_flight))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setEndMissionButtonEn(true);
+                            this->setStopScanButtonEn(false);
+                            this->setFlightStatus("UAVs are flying to target...");
+                        }
+                    }
+                    break;
+                }
+                case 3: //alignment state
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::alignment) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::alignment))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setStopScanButtonEn(false);
+                            this->descend2Targ = false;
+                            this->setFlightStatus("UAVs are aligning...");
+                           
+                        }
+                    }
+                    break;
+                }
+                case 4: //descend state
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::descend) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::descend))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setStopScanButtonEn(false);
+                            this->descend2Targ = true;
+                            this->setFlightStatus("UAVs are descending to scan altitude...");
+                            
+                        }
+                    }
+                    break;
+                }
+
+                case 5: //scan state
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::coord_flight) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::coord_flight))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setStopScanButtonEn(false);
+                            switch(this->scan_state_)
+                            {
+                                case StartScan::scan_off:
+                                    this->setFlightStatus("Stopping Scan");
+                                    break;
+                                case StartScan::scan_on:
+                                    this->setFlightStatus("Performing X-Ray Scan...");
+                                    this->setStopScanButtonEn(true);
+                                    break;
+                                case StartScan::scan_hard_kill:
+                                    this->setFlightStatus("Powering off emitter...");
+                                    break;
+                                case StartScan::scan_cal:
+                                    this->setFlightStatus("Calibrating Detector...");
+                                    break;
+
+                                case StartScan::scan_tube_season:
+                                    this->setFlightStatus("Performing Tube Seasoning...");
+                                    break;
+                                default:
+                                    this->setFlightStatus("Unknown Scan State!");
+                                    break;
+
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case 6: //operator input state
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::operator_input) && (this->uav_state_map_[SYSID_DETECTOR] == FlightState::operator_input))
                         {
                             this->setStartMissionButtonEn(false);
                             this->setResumeMissionButtonEn(true);
@@ -482,34 +519,44 @@ void BackendController::processTelemetryUpdates()
                             }
                         }
                     }
-                    else if(this->subscribed_map_[sysid] || this->subscribed_map_[sysid])
-                    {
-                        this->setStartMissionButtonEn(false);
-                        this->setResumeMissionButtonEn(true);
-                        this->setSendGoalButtonEn(true);
-                        this->setStopScanButtonEn(false);
-                        this->setStartScanButtonEn(this->descend2Targ);
-                        this->setEndMissionButtonEn(true);
-                        if(this->descend2Targ)
-                        {
-                            this->setFlightStatus("Waiting for user adjustments and/or scan...");
-                        } 
-                        else
-                        {
-                            this->setFlightStatus("Waiting for user adjustments and/or resume mission...");
-                        }   
-                    }
+                    /* Note: this now only works when two drone's are being used... Need to add more logic if we want to fly only 1 UAV */
+                    // else if(this->subscribed_map_[sysid] || this->subscribed_map_[sysid])
+                    // {
+                    //     this->setStartMissionButtonEn(false);
+                    //     this->setResumeMissionButtonEn(true);
+                    //     this->setSendGoalButtonEn(true);
+                    //     this->setStopScanButtonEn(false);
+                    //     this->setStartScanButtonEn(this->descend2Targ);
+                    //     this->setEndMissionButtonEn(true);
+                    //     if(this->descend2Targ)
+                    //     {
+                    //         this->setFlightStatus("Waiting for user adjustments and/or scan...");
+                    //     } 
+                    //     else
+                    //     {
+                    //         this->setFlightStatus("Waiting for user adjustments and/or resume mission...");
+                    //     }   
+                    // }
                     break;
                 case 7: //rtl state
-                    this->setStartMissionButtonEn(false);
-                    this->setResumeMissionButtonEn(false);
-                    this->setStartScanButtonEn(false);
-                    this->setSendGoalButtonEn(false);
-                    this->setEndMissionButtonEn(false);
-                    this->setStopScanButtonEn(false);
-                    this->setFlightStatus("UAVs are returning to home...");
+                {
+                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::rtl) && (this->uav_state_map_[SYSID_DETECTOR] == FlightState::rtl))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setEndMissionButtonEn(false);
+                            this->setStopScanButtonEn(false);
+                            this->setFlightStatus("UAVs are returning to home...");
+                        }
+                    }
                     break;
+                }
                 case 8: //test state
+                {
                     this->setStartMissionButtonEn(true);
                     this->setResumeMissionButtonEn(false);
                     this->setStartScanButtonEn(false);
@@ -517,8 +564,9 @@ void BackendController::processTelemetryUpdates()
                     this->setStopScanButtonEn(false);
                     this->setFlightStatus("UAVs are in test state...");
                     break;
+                }
                 default:
-                    // std::cerr << "Unknown Flight State" << std::endl;
+                {
                     qDebug() << "Unknown flight state";
                     this->setStartMissionButtonEn(false);
                     this->setStartScanButtonEn(false);
@@ -527,6 +575,7 @@ void BackendController::processTelemetryUpdates()
                     this->setStopScanButtonEn(false);
                     this->setEndMissionButtonEn(false);
                     break;
+                }
             }
         }
         this->uav_state_updated_.store(false);
@@ -570,9 +619,10 @@ void BackendController::processTelemetryUpdates()
     }
 
 
-    if((this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) && (this->uav_state_map_[SYSID_EMITTER_COMP] == 0))
+    if((this->flight_state_map_[SYSID_DETECTOR] == FlightState::init) && (this->flight_state_map_[SYSID_EMITTER] == FlightState::init))
     {
-        if((this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP]) && !this->calMsgSent_ && (!this->targMsgSent_) )
+        /* Note: this now only works when two drone's are being used... Need to add more logic if we want to fly only 1 UAV */
+        if((this->subscribed_map_[SYSID_DETECTOR] && this->subscribed_map_[SYSID_EMITTER]) && !this->calMsgSent_ && (!this->targMsgSent_) )
         {
             this->setFlightStatus("Waiting for user to send target information to UAVs. \n Waiting for user to calibrate detector.");
         }
@@ -748,35 +798,36 @@ void BackendController::sendGoal()
     msg.flightAlt    = this->flight_alt_;
     msg.flightVel    = this->flight_vel_;
 
-   // Send to ALL connected vehicles
-    MultiVehicleManager* mgr = MultiVehicleManager::instance();
-    for (int i = 0; i < mgr->vehicles()->count(); i++) {
-        
-        Vehicle* vehicle = mgr->vehicles()->value<Vehicle*>(i);
-        if (!vehicle) continue;
+    //continue to send until both drones ack they received
+    while((this->msg_ack_map_[SYSID_DETECTOR] != AckType::ack_target) && (this->msg_ack_map_[SYSID_EMITTER] != AckType::ack_target)) 
+    {
+        MultiVehicleManager* mgr = MultiVehicleManager::instance();
+        for (int i = 0; i < mgr->vehicles()->count(); i++) {
+            
+            Vehicle* vehicle = mgr->vehicles()->value<Vehicle*>(i);
+            if (!vehicle) continue;
 
-        SharedLinkInterfacePtr sharedLink = vehicle->vehicleLinkManager()->primaryLink().lock();
-        if (!sharedLink) continue;
+            SharedLinkInterfacePtr sharedLink = vehicle->vehicleLinkManager()->primaryLink().lock();
+            if (!sharedLink) continue;
 
-        mavlink_message_t mavMsg;
-        mavlink_msg_cooperative_target_definition_encode_chan(
-            static_cast<uint8_t>(MAVLinkProtocol::instance()->getSystemId()),
-            static_cast<uint8_t>(MAVLinkProtocol::getComponentId()),
-            sharedLink->mavlinkChannel(),
-            &mavMsg,
-            &msg
-        );
-        qDebug() << "Sending target message to system id " << vehicle->id();
+            mavlink_message_t mavMsg;
+            mavlink_msg_cooperative_target_definition_encode_chan(
+                static_cast<uint8_t>(MAVLinkProtocol::instance()->getSystemId()),
+                static_cast<uint8_t>(MAVLinkProtocol::getComponentId()),
+                sharedLink->mavlinkChannel(),
+                &mavMsg,
+                &msg
+            );
+            qDebug() << "Sending target message to system id " << vehicle->id();
 
-        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
-        break; //send only one message out as it's going to both mavlink-routers on port 50882
+            (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+            break; //send only one message out as it's going to both mavlink-routers on port 50882
+        }
     }
-
-    // this->targMsgSent_ = true;
-    // this->uav_state_updated_.store(true);
-   
 }
 
+//To make sendStartScanMission robust, we need to make sure each UAV 
+//ackowledges for each start type (start, resume, end)
 void BackendController::sendStartMission(uint8_t & state)
 {
     mavlink_start_mission_t msg = {};

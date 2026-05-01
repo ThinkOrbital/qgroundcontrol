@@ -114,13 +114,6 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
 
-    //payload settings
-    // Q_PROPERTY(uint32_t emitterTestDurationMs READ emitterTestDurationMs WRITE setTestDuration NOTIFY testDurationChanged)
-    // Q_PROPERTY(uint32_t emitterTelemetryCadenceMs READ emitterTelemetryCadenceMs WRITE setCadence NOTIFY cadenceChanged)
-    // Q_PROPERTY(uint32_t emitterXrayExposureMs READ emitterXrayExposureMs WRITE setExposure NOTIFY exposureChanged)
-    // Q_PROPERTY(uint32_t emitterXrayVoltageKv READ emitterXrayVoltageKv WRITE setVoltage NOTIFY voltageChanged)
-    // Q_PROPERTY(uint32_t emitterXrayCurrentUa READ emitterXrayCurrentUa WRITE setCurrent NOTIFY currentChanged)
-    // Q_PROPERTY(uint32_t emitterCommsBlockTimeoutMs READ emitterCommsBlockTimeoutMs WRITE setCommTimeout NOTIFY commTimeoutChanged)
 
     Q_PROPERTY(int32_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
