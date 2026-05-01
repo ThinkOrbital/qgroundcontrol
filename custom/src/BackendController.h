@@ -471,8 +471,8 @@ private:
     Vehicle* _vehicle = nullptr;
 
 
-    // Mission State
-    std::map<uint8_t, uint8_t> uav_state_map_;
+    // // Mission State
+    // std::map<uint8_t, uint8_t> uav_state_map_;
     // Subscription Status
     std::map<uint8_t, bool> subscribed_map_;
     std::map<uint8_t, bool> connection_status_map_; //ToDo: keep track of connected/disconnected
