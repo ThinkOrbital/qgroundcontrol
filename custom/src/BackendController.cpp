@@ -91,12 +91,12 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
     Q_UNUSED(link)
     
     // Filter to only two drones
-    if (message.sysid != SYSID_EMITTER && message.sysid != SYSID_DETECTOR && message.sysid != SYSID_DETECTOR_COMP && message.sysid != SYSID_EMITTER_COMP) {
+    if (message.sysid != SYSID_EMITTER && message.sysid != SYSID_DETECTOR) {
         return;
     }
 
     //messages coming directly from FCU
-    if(message.sysid == SYSID_EMITTER || message.sysid == SYSID_DETECTOR)
+    if((message.sysid == SYSID_EMITTER || message.sysid == SYSID_DETECTOR) && (message.compid != SYSID_EMITTER_COMP && message.compid != SYSID_DETECTOR_COMP))
     {
         switch (message.msgid) {
             case MAVLINK_MSG_ID_GLOBAL_POSITION_INT: {
@@ -124,15 +124,15 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
     }
     
   
-    if(message.sysid == SYSID_EMITTER_COMP || message.sysid == SYSID_DETECTOR_COMP)
+    if(message.compid == SYSID_EMITTER_COMP || message.compid == SYSID_DETECTOR_COMP)
     {
 
-        this->subscribed_map_[message.sysid] = true;
+        this->subscribed_map_[message.compid] = true;
 
         switch (message.msgid) {
 
             case MAVLINK_MSG_ID_HEARTBEAT: {
-                this->heartbeat_last_seen_ms_[message.sysid] = QDateTime::currentMSecsSinceEpoch(); 
+                this->heartbeat_last_seen_ms_[message.compid] = QDateTime::currentMSecsSinceEpoch(); 
                 break;
             }
 
@@ -140,9 +140,9 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_cooperative_state_t coop_state;
                 mavlink_msg_cooperative_state_decode(&message, &coop_state);
                 // store/emit based on sysid
-                qDebug() << "Received coop state of " << coop_state.state << " from sysid " << message.sysid;
+                qDebug() << "Received coop state of " << coop_state.state << " from sysid " << message.compid;
         
-                this->uav_state_map_[message.sysid] = coop_state.state;
+                this->uav_state_map_[message.compid] = coop_state.state;
                 this->uav_state_updated_.store(true);
                 if(coop_state.state == 6) //ToDo: need to add enum for UAV states to QGC
                 {
@@ -219,7 +219,7 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_msg_ack_t msg_ack;
                 mavlink_msg_msg_ack_decode(&message, &msg_ack);
                 
-                this->msg_ack_map_[message.sysid] = static_cast<AckType> (msg_ack.ack_type);
+                this->msg_ack_map_[message.compid] = static_cast<AckType> (msg_ack.ack_type);
 
                 if(this->subscribed_map_[SYSID_EMITTER_COMP] && this->subscribed_map_[SYSID_DETECTOR_COMP])
                 {
