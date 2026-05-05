@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <chrono>
 #include <QGeoCoordinate>
 #include <QQuaternion>
 #include <QDateTime>
@@ -305,7 +306,7 @@ public:
     Q_INVOKABLE void killScan();
     Q_INVOKABLE void emTubeSeasoning();
     Q_INVOKABLE void payloadCal();
-    void send_ack(AckType type);
+ 
 
     //payload settings
     Q_INVOKABLE void setCadence(const uint32_t telemCadence);
@@ -393,8 +394,9 @@ private slots:
 
 private:
 
-    void sendStartMission(uint8_t & state);
-    void sendStartScan(uint8_t & state);
+    void sendStartMission(StartMission state);
+    void sendStartScan(StartScan state);
+    void send_ack(AckType type, uint8_t src_id);
 
     // std::unique_ptr<DroneControl> ctrl;
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
@@ -411,7 +413,7 @@ private:
     bool isResumeMissionButtonEn_ = {false};
     bool isStartScanButtonEn_ = {false};
     bool isStopScanButtonEn_ = {false};
-    bool isSendGoalButtonEn_ = {true};
+    bool isSendGoalButtonEn_ = {false};
     bool isEndMissionButtonEn_ = {false};
     
     bool targMsgSent_ = {false};
@@ -477,6 +479,17 @@ private:
     std::map<uint8_t, bool> subscribed_map_;
     std::map<uint8_t, bool> connection_status_map_; //ToDo: keep track of connected/disconnected
 
+    bool sent_start_msg_ {false};
+    bool sent_scan_msg_ {false};
+    bool sent_targ_msg_ {false};
+
+    std::chrono::steady_clock::time_point start_msg_time_;
+    std::chrono::steady_clock::time_point scan_msg_time_;
+    std::chrono::steady_clock::time_point targ_msg_time_;
+
+    StartMission prev_mission_msg_state_;
+    StartScan prev_scan_msg_state_;
+
     std::atomic<bool> position_updated_{false};
     std::atomic<bool> gps_info_updated_{false};
     std::atomic<bool> attitude_updated_{false};
@@ -495,4 +508,11 @@ private:
     const uint8_t SYSID_DETECTOR_COMP {11};
     const uint8_t SYSID_RTK {124};
 };
+
+//template to check multiple enum types at once.
+template<typename T, typename... Args>
+bool is_one_of(T val, Args... args) {
+    return ((val == args) || ...);
+}
+
 
