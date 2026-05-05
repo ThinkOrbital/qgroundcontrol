@@ -4,7 +4,7 @@
 #include "QGCPalette.h"
 #include "QGCMAVLink.h"
 #include "AppSettings.h"
-#include "BrandImageSettings.h"
+// #include "BrandImageSettings.h"
 
 #include <QtCore/QApplicationStatic>
 #include <QtQml/QQmlApplicationEngine>
