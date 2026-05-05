@@ -3,6 +3,8 @@
 #include <QMetaObject>
 #include <QGeoCoordinate>
 #include <QtMath>
+#include "QmlObjectListModel.h"
+#include "VehicleLinkManager.h"
 
 #include "Comms/MAVLinkProtocol.h"
 
@@ -43,7 +45,7 @@ BackendController::BackendController(QObject *parent)
             this, &BackendController::_vehicleRemoved);
 
     // Register any vehicles already connected at startup
-    QmlObjectListModel* vehicles = mgr->vehicles();
+    auto vehicles = mgr->vehicles();
     for (int i = 0; i < vehicles->count(); i++) {
         Vehicle* v = qobject_cast<Vehicle*>(vehicles->get(i));
         if (v) _vehicleAdded(v);
