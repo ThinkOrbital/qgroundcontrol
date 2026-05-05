@@ -423,6 +423,8 @@ private:
     bool descend2Targ = {false};
     bool mapCentered_ = {false};
 
+    bool singleUAV_ = {false};
+
     //payload
     StartScan scan_state_ {StartScan::scan_off};
 

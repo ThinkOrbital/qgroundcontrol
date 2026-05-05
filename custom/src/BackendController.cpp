@@ -409,11 +409,6 @@ void BackendController::processTelemetryUpdates()
                         if((this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::init))
                         {
                             QString str_flight_status;
-                     
-                            // if(calMsgSent_ && (this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0))
-                            // {
-                            //     this->setStartScanButtonEn(false);
-                            // }
                             
                             if(targMsgSent_ && calMsgSent_)
                             {
@@ -440,16 +435,14 @@ void BackendController::processTelemetryUpdates()
                             this->setSendGoalButtonEn(true);
                         }
                     } 
-                    /* Note: this now only works when two drone's are being used... Need to add more logic if we want to fly only 1 UAV */
-                    // else if(this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP])
+                    //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
+                    //single UAV to work again.It might be better to just add the else if statement directly as an or in the if statement
+                    //above
+                    // else if(this->singleUAV_ && (this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP]))
                     // {
                     //     qDebug() << "Inside subscribed_map_ check";
                     //     QString str_flight_status;
-                    //     // if(targMsgSent_ && (this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0))
-                    //     // {
-                    //     //     this->setStartMissionButtonEn(true);
-                            
-                    //     // }
+
                     //     if(calMsgSent_ && ((this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0)))
                     //     {
                     //         this->setStartScanButtonEn(false);
@@ -615,8 +608,10 @@ void BackendController::processTelemetryUpdates()
                                 }
                             }
                         }
-                        /* Note: this now only works when two drone's are being used... Need to add more logic if we want to fly only 1 UAV */
-                        // else if(this->subscribed_map_[sysid] || this->subscribed_map_[sysid])
+                        //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
+                        //single UAV to work again. It might be better to just add the else if statement directly as an or in the if statement
+                        //above.
+                        // else if(this->singleUAV_ && (this->subscribed_map_[sysid] || this->subscribed_map_[sysid]))
                         // {
                         //     this->setStartMissionButtonEn(false);
                         //     this->setResumeMissionButtonEn(true);
@@ -718,11 +713,20 @@ void BackendController::processTelemetryUpdates()
 
     if((this->flight_state_map_[SYSID_DETECTOR] == FlightState::init) && (this->flight_state_map_[SYSID_EMITTER] == FlightState::init))
     {
-        /* Note: this now only works when two drone's are being used... Need to add more logic if we want to fly only 1 UAV */
+        /* Two UAVs */
         if((this->subscribed_map_[SYSID_DETECTOR] && this->subscribed_map_[SYSID_EMITTER]) && !this->calMsgSent_ && !this->targMsgSent_ )
         {
             this->setFlightStatus("Waiting for user to send target information to UAVs. \n Waiting for user to calibrate detector.");
         }
+
+        /* Single UAV */
+        //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
+        //single UAV to work again.
+        // if(this->singleUAV_ && (this->subscribed_map_[SYSID_DETECTOR] || this->subscribed_map_[SYSID_EMITTER]) && !this->calMsgSent_ && !this->targMsgSent_ )
+        // {
+        //     this->setFlightStatus("Waiting for user to send target information to UAVs. \n Waiting for user to calibrate detector.");
+        // }
+
     }
 
 }
