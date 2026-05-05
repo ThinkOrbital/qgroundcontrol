@@ -1,6 +1,8 @@
 #include "OrthoBackend.h"
 
 #include <QtConcurrent>
+#include <QImage>
+#include <QBuffer>
 
 OrthomosaicBackend::OrthomosaicBackend(QObject* parent)
     : QObject(parent)
@@ -26,28 +28,34 @@ void OrthomosaicBackend::loadGeoTiff(const QString& path)
     if (cleaned.startsWith("file://"))
         cleaned = QUrl(path).toLocalFile();
 
-    this->future_ = QtConcurrent::run([this, cleaned]()
+
+    if (!this->stepValidateAndOpen(cleaned))
     {
-        if (!this->stepValidateAndOpen(cleaned)) return;
+        qWarning() << "Validate and Open step failed";
+            return;
+    }
+    qDebug() << "Validate and Open was successful";
 
-        this->ortho_file_name_ = QFileInfo(cleaned).fileName();
-        emit orthoFileNameChanged();
+    this->ortho_file_name_ = QFileInfo(cleaned).fileName();
+    emit orthoFileNameChanged();
 
-        if (this->ortho_cancelled_) return;
-        if (!this->stepReprojectToWebMercator()) return;
+    qDebug() << "Ortho filename changed successfully";
+    if (this->ortho_cancelled_) return;
 
-        if (this->ortho_cancelled_) return;
-        if (!this->stepBuildOverviews()) return;
+    qDebug() << "Reprojecting to Web Mercator...";
+    if (!this->stepReprojectToWebMercator()) return;
 
-        if (this->ortho_cancelled_) return;
-        if (!this->stepStartTileServer()) return;
+    // if (this->ortho_cancelled_) return;
+    // if (!this->stepBuildOverviews()) return;
 
-        this->ortho_ready_ = true;
-        this->ortho_processing_ = false;
+    // if (this->ortho_cancelled_) return;
+    // if (!this->stepStartTileServer()) return;
 
-        emit orthoReadyChanged();
-        emit orthoProcessingChanged();
-    });
+    // this->ortho_ready_ = true;
+    // this->ortho_processing_ = false;
+
+    // emit orthoReadyChanged();
+    // emit orthoProcessingChanged();
 }
 
 // Step 1: Validate and Open GeoTiff
@@ -59,6 +67,7 @@ bool OrthomosaicBackend::stepValidateAndOpen(const QString& path)
 
     // Clean previous dataset safely (no Qt invoke hacks)
     cleanupPreviousSession();
+  
 
     const std::string nativePath = path.toUtf8().toStdString();
 
@@ -78,6 +87,7 @@ bool OrthomosaicBackend::stepValidateAndOpen(const QString& path)
     {
         emit errorOccurred("GeoTIFF has no projection.");
         cleanupPreviousSession();
+
         return false;
     }
 
@@ -117,7 +127,10 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
 
     QString inputPath = gdal_data_path_;
 
-    warped_path_ = QDir::tempPath() + "/ortho_3857.tif";
+    // warped_path_ = QDir::tempPath() + "/ortho_3857.tif";
+    warped_path_ = QDir::tempPath() +
+    QString("/ortho_%1_3857.tif")
+        .arg(reinterpret_cast<uintptr_t>(this));
 
     QStringList args;
 
@@ -126,7 +139,7 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
          << "-of" << "GTiff"
 
          // VERY IMPORTANT: grid alignment
-         << "-tap"
+        //  << "-tap"
 
          // tiling
          << "-co" << "TILED=YES"
@@ -140,7 +153,35 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
          << inputPath
          << warped_path_;
 
-    QProcess* proc = new QProcess(this);
+
+    QProcess* proc = new QProcess();
+
+    qDebug() << "Running gdalwarp with args:" << args;
+    qDebug() << "Running gdalwarp:" << QStandardPaths::findExecutable("gdalwarp");
+    qDebug() << "Input path exists:" << QFile::exists(inputPath);
+    qDebug() << "Output path:" << warped_path_;
+    
+    connect(proc, &QProcess::started, this, []() {
+        qDebug() << "gdalwarp process started successfully";
+    });
+
+    connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
+        QString out = proc->readAllStandardOutput();
+        qDebug() << "[gdalwarp stdout]" << out;
+        
+        // gdalwarp outputs "0...10...20...30...40...50...60...70...80...90...100"
+        QRegularExpression re(R"((\d+)\.\.\.)");
+        auto it = re.globalMatch(out);
+        int lastVal = -1;
+        while (it.hasNext())
+            lastVal = it.next().captured(1).toInt();
+
+        if (lastVal >= 0) {
+            // Map gdalwarp 0-100 into our 5-40% progress range
+            double mapped = 5.0 + (lastVal / 100.0) * 35.0;
+            setOrthoProgress(mapped, "Warping to EPSG:3857...");
+        }
+    });
 
     connect(proc, &QProcess::readyReadStandardError, this, [this, proc]()
     {
@@ -148,9 +189,15 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
         qWarning() << "[gdalwarp]" << err;
     });
 
+    connect(proc, &QProcess::errorOccurred, this, [](QProcess::ProcessError err) {
+        qWarning() << "gdalwarp process error:" << err;
+    });
+
     connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, proc](int code, QProcess::ExitStatus status)
     {
+        if(this->ortho_cancelled_) return;
+
         proc->deleteLater();
 
         if (code != 0 || status != QProcess::NormalExit)
@@ -176,6 +223,10 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
 
     proc->start("gdalwarp", args);
 
+    if (!proc->waitForStarted(3000)) {
+        emit errorOccurred("gdalwarp failed to start — is it in PATH?");
+        return false;
+    }
     return true;
 }
 
@@ -206,6 +257,8 @@ bool OrthomosaicBackend::stepBuildOverviews()
     connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, proc](int code, QProcess::ExitStatus status)
     {
+        if(this->ortho_cancelled_) return;
+
         proc->deleteLater();
 
         if (code != 0 || status != QProcess::NormalExit)
@@ -232,6 +285,43 @@ bool OrthomosaicBackend::stepBuildOverviews()
             return;
         }
 
+        // After reopening warped_dataset_ in the finished lambda
+        double gt[6];
+        warped_dataset_->GetGeoTransform(gt);
+
+        int width = warped_dataset_->GetRasterXSize();
+        int height = warped_dataset_->GetRasterYSize();
+
+        double minX = gt[0];
+        double maxY = gt[3];
+        double maxX = gt[0] + width * gt[1];
+        double minY = gt[3] + height * gt[5];
+
+        qDebug() << "Warped dataset bounds (EPSG:3857):";
+        qDebug() << "  minX:" << minX << "maxX:" << maxX;
+        qDebug() << "  minY:" << minY << "maxY:" << maxY;
+
+        // Convert to lat/lon for sanity check
+        double centerLon = ((minX + maxX) / 2.0) / 20037508.34 * 180.0;
+        double centerLat = std::atan(std::exp(((minY + maxY) / 2.0) / 20037508.34 * M_PI)) * 360.0 / M_PI - 90.0;
+        qDebug() << "Center lat/lon:" << centerLat << centerLon;
+
+        auto lonToTileX = [](double lon, int z) -> int {
+            return (int)std::floor((lon + 180.0) / 360.0 * std::pow(2.0, z));
+        };
+        auto latToTileY = [](double lat, int z) -> int {
+            double latRad = lat * M_PI / 180.0;
+            return (int)std::floor((1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / M_PI) / 2.0 * std::pow(2.0, z));
+        };
+
+        for (int z : {15, 16, 17, 18}) {
+            int tx = lonToTileX(centerLon, z);
+            int ty = latToTileY(centerLat, z);
+            qDebug() << "Zoom" << z << "-> tile" << tx << ty;
+            qDebug() << "  curl -o tile.png \"http://localhost:33679/tiles/" 
+                    << z << "/" << tx << "/" << ty << ".png\"";
+        }
+
         stepStartTileServer();
     });
 
@@ -243,65 +333,55 @@ bool OrthomosaicBackend::stepBuildOverviews()
 // Step 5: Start tile server
 bool OrthomosaicBackend::stepStartTileServer()
 {
-   bool success = false;
+    this->qtcp_server_ = new QTcpServer(this);
 
-    QMetaObject::invokeMethod(this, [this, &success]() {
+    connect(this->qtcp_server_, &QTcpServer::newConnection,
+            this, [this]() {
 
-        this->qtcp_server_ = new QTcpServer(this);
+        while (this->qtcp_server_->hasPendingConnections()) {
 
-        connect(this->qtcp_server_, &QTcpServer::newConnection,
-                this, [this]() {
+            QTcpSocket* socket = this->qtcp_server_->nextPendingConnection();
 
-            while (this->qtcp_server_->hasPendingConnections()) {
+            qDebug() << "Tile client connected from"
+                        << socket->peerAddress().toString();
 
-                QTcpSocket* socket = this->qtcp_server_->nextPendingConnection();
+            socket_buffers_[socket] = {};
 
-                qDebug() << "Tile client connected from"
-                         << socket->peerAddress().toString();
+            connect(socket, &QTcpSocket::readyRead, this,
+                    [this, socket]() {
 
-                socket_buffers_[socket] = {};
+                socket_buffers_[socket] += socket->readAll();
 
-                connect(socket, &QTcpSocket::readyRead, this,
-                        [this, socket]() {
+                QByteArray& buffer = socket_buffers_[socket];
 
-                    socket_buffers_[socket] += socket->readAll();
+                if (!buffer.contains("\r\n\r\n"))
+                    return;
 
-                    QByteArray& buffer = socket_buffers_[socket];
+                this->handleTileRequest(socket, buffer);
 
-                    if (!buffer.contains("\r\n\r\n"))
-                        return;
+                socket_buffers_.remove(socket);
+            });
 
-                    this->handleTileRequest(socket, buffer);
-
-                    socket_buffers_.remove(socket);
-                });
-
-                connect(socket, &QTcpSocket::disconnected,
-                        this, [this, socket]() {
-                    socket_buffers_.remove(socket);
-                    socket->deleteLater();
-                });
-            }
-        });
-
-        if (!this->qtcp_server_->listen(QHostAddress::LocalHost, 0)) {
-            qWarning() << "Tile server failed:" << this->qtcp_server_->errorString();
-            success = false;
-            return;
+            connect(socket, &QTcpSocket::disconnected,
+                    this, [this, socket]() {
+                socket_buffers_.remove(socket);
+                socket->deleteLater();
+            });
         }
+    });
 
-        this->ortho_tile_url_ =
-            QString("http://localhost:%1/tiles/{z}/{x}/{y}.png")
-                .arg(this->qtcp_server_->serverPort());
+    if (!this->qtcp_server_->listen(QHostAddress::LocalHost, 0)) {
+        qWarning() << "Tile server failed:" << this->qtcp_server_->errorString();
+        return false;
+    }
 
-        qDebug() << "Tile server running at:" << this->ortho_tile_url_;
+    this->ortho_tile_url_ =
+        QString("http://localhost:%1/tiles/{z}/{x}/{y}.png")
+            .arg(this->qtcp_server_->serverPort());
 
-        success = true;
+    qDebug() << "Tile server running at:" << this->ortho_tile_url_;
 
-    }, Qt::BlockingQueuedConnection);
-
-    if (!success) return false;
-
+    this->ortho_processing_ = false;
     this->setOrthoProgress(100.0, "Ready ✓");
     return true;
 }
@@ -309,20 +389,13 @@ bool OrthomosaicBackend::stepStartTileServer()
 void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
                                            const QByteArray& request)
 {
-    QByteArray line = request.left(request.indexOf("\r\n"));
-
-    QRegularExpression re(
-        R"(^GET /tiles/(\d+)/(\d+)/(\d+)\.png HTTP/1\.[01])"
-    );
-
-    QRegularExpressionMatch match = re.match(QString::fromLatin1(line));
+    // --- Parse XYZ from request line, e.g. "GET /tiles/12/2134/1455.png HTTP/1.1"
+    QString req = QString::fromUtf8(request);
+    QRegularExpression re(R"(/tiles/(\d+)/(\d+)/(\d+)\.png)");
+    auto match = re.match(req);
 
     if (!match.hasMatch()) {
-        socket->write(
-            "HTTP/1.1 400 Bad Request\r\n"
-            "Content-Length: 0\r\n\r\n"
-        );
-        socket->disconnectFromHost();
+        socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
         return;
     }
 
@@ -330,29 +403,302 @@ void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
     int x = match.captured(2).toInt();
     int y = match.captured(3).toInt();
 
-    QThreadPool::globalInstance()->start([this, socket, z, x, y]() {
+    // --- Convert XYZ tile to EPSG:3857 bounds
+    // Standard Web Mercator tile math
+    double n = std::pow(2.0, z);
+    double originShift = 2 * M_PI * 6378137.0 / 2.0; // ~20037508.34
+    double tileSize = 2 * originShift / n;
 
-        QByteArray tile = this->renderTile(z, x, y);
+    double minX = x * tileSize - originShift;
+    double maxX = minX + tileSize;
+    double maxY = originShift - y * tileSize;
+    double minY = maxY - tileSize;
 
-        QMetaObject::invokeMethod(this, [socket, tile]() {
+    // double mercMinX = mercBounds.left();
+    // double mercMaxX = mercBounds.right();
+    // double mercMinY = mercBounds.top();      // smaller Y = south
+    // double mercMaxY = mercBounds.bottom(); // larger Y = north
 
-            if (!socket || socket->state() != QAbstractSocket::ConnectedState)
-                return;
+    // --- Map mercator bounds to pixel coords in warped_dataset_
+    double gt[6];
+    warped_dataset_->GetGeoTransform(gt);
+    // qDebug() << "Tile mercBounds top=" << mercBounds.top() 
+    //      << "left=" << mercBounds.left()
+    //      << "bottom=" << mercBounds.bottom()
+    //      << "right=" << mercBounds.right();
+    qDebug() << "Dataset gt[0]=" << gt[0] << "gt[3]=" << gt[3]
+         << "gt[1]=" << gt[1] << "gt[5]=" << gt[5];
 
-            QByteArray header =
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: image/png\r\n"
-                "Access-Control-Allow-Origin: *\r\n"
-                "Cache-Control: max-age=3600\r\n"
-                "Content-Length: " + QByteArray::number(tile.size()) + "\r\n\r\n";
+    
+    // Calculate native zoom level from resolution
+    // Web Mercator full extent = 40075016m, tile = 256px
+    // zoom = log2(40075016 / (256 * resolution))
+    // double nativeZoom = std::log2(40075016.0 / (256.0 * gt[1]));
+    // int minZoom = static_cast<int>(std::floor(nativeZoom)) - 2; // allow 2 levels below native
 
-            socket->write(header);
-            socket->write(tile);
-            socket->disconnectFromHost();
+    // qDebug() << "Native zoom:" << nativeZoom << "Min zoom:" << minZoom;
 
-        }, Qt::QueuedConnection);
-    });
+    // if (z < minZoom) {
+    //     qDebug() << "Zoom" << z << "too low (min" << minZoom << "), sending empty tile";
+    //     sendEmptyTile(socket);
+    //     return;
+    // }
+
+    int rawX = static_cast<int>((minX - gt[0]) / gt[1]);
+    int rawY = static_cast<int>((maxY - gt[3]) / gt[5]); // gt[5] negative → positive pixel offset
+    int rawW = static_cast<int>((maxX - minX)  / gt[1]);
+    int rawH = static_cast<int>((minY - maxY)  / gt[5]); // both negative → positive result
+
+    qDebug() << "Raw pixel window: x=" << rawX << "y=" << rawY
+         << "w=" << rawW << "h=" << rawH;
+
+    int dsWidth  = warped_dataset_->GetRasterXSize();
+    int dsHeight = warped_dataset_->GetRasterYSize();
+
+    qDebug() << "Raster size dsWidth = " << dsWidth << " dsHeight = " << dsHeight;
+
+      // Check if tile is completely outside raster
+    if (rawX >= dsWidth  || rawY >= dsHeight ||
+        rawX + rawW <= 0 || rawY + rawH <= 0)
+    {
+        qDebug() << "Tile outside raster extent, sending empty tile";
+        sendEmptyTile(socket);
+        return;
+    }
+
+    // // If the source window is larger than the whole dataset, this zoom is too low
+    // if (rasterW > dsWidth || rasterH > dsHeight) {
+    //     qDebug() << "Source window is larger than the whole dataset, this zoom is too low";
+    //     sendEmptyTile(socket);
+    //     return;
+    // }
+
+    // Clamp to raster bounds
+    int clampedX = std::max(0, rawX);
+    int clampedY = std::max(0, rawY);
+    int clampedW = std::min(rawW, dsWidth  - clampedX);
+    int clampedH = std::min(rawH, dsHeight - clampedY);
+
+    qDebug() << "Clamped pixel window: x=" << clampedX << "y=" << clampedY
+         << "w=" << clampedW << "h=" << clampedH;
+
+    // --- Read RGB via RasterIO (resamples to 256x256 using overviews automatically)
+    const int TILE_SIZE = 256;
+    int outX = static_cast<int>((clampedX - rawX) * TILE_SIZE / (double)rawW);
+    int outY = static_cast<int>((clampedY - rawY) * TILE_SIZE / (double)rawH);
+    int outW = static_cast<int>(clampedW * TILE_SIZE / (double)rawW);
+    int outH = static_cast<int>(clampedH * TILE_SIZE / (double)rawH);
+
+    // Clamp output dimensions
+    outW = std::min(outW, TILE_SIZE - outX);
+    outH = std::min(outH, TILE_SIZE - outY);
+
+    if (outW <= 0 || outH <= 0)
+    {
+        sendEmptyTile(socket);
+        return;
+    }
+
+    // --- RGBA buffer (transparent black by default)
+    std::vector<uint8_t> buf(TILE_SIZE * TILE_SIZE * 4, 0);
+
+    // --- Temp buffer for the clamped read
+    std::vector<uint8_t> readBuf(outW * outH * 3);
+
+    // --- RasterIO — GDAL picks overview automatically based on outW/outH vs clampedW/clampedH
+    int bandMap[3] = {1, 2, 3};
+    CPLErr err = warped_dataset_->RasterIO(
+        GF_Read,
+        clampedX, clampedY, clampedW, clampedH,  // source window (clamped)
+        readBuf.data(), outW, outH,               // output size (GDAL downsamples via overviews)
+        GDT_Byte,
+        3, bandMap,
+        3, outW * 3, 1,                           // pixel, line, band spacing
+        nullptr
+    );
+
+    if (err != CE_None) {
+        // Tile is outside raster extent — return transparent PNG
+        qWarning() << "RasterIO failed for tile" << z << x << y;
+        sendEmptyTile(socket);
+        return;
+    }
+
+    // --- Copy readBuf into the correct position in the RGBA tile buffer
+    for (int row = 0; row < outH; row++)
+    {
+        for (int col = 0; col < outW; col++)
+        {
+            int srcIdx = (row * outW + col) * 3;
+            int dstIdx = ((outY + row) * TILE_SIZE + (outX + col)) * 4;
+            buf[dstIdx + 0] = readBuf[srcIdx + 0]; // R
+            buf[dstIdx + 1] = readBuf[srcIdx + 1]; // G
+            buf[dstIdx + 2] = readBuf[srcIdx + 2]; // B
+            buf[dstIdx + 3] = 255;                 // A — fully opaque
+        }
+    }
+
+    // --- Encode to PNG
+    QImage img(buf.data(), TILE_SIZE, TILE_SIZE, TILE_SIZE * 4, QImage::Format_RGBA8888);
+    QByteArray png;
+    QBuffer pngBuf(&png);
+    pngBuf.open(QIODevice::WriteOnly);
+    img.save(&pngBuf, "PNG");
+
+    // --- Write HTTP response
+    QByteArray response;
+    response  = "HTTP/1.1 200 OK\r\n";
+    response += "Content-Type: image/png\r\n";
+    response += "Content-Length: " + QByteArray::number(png.size()) + "\r\n";
+    response += "Access-Control-Allow-Origin: *\r\n";
+    response += "\r\n";
+    response += png;
+
+    socket->write(response);
+    socket->flush();
 }
+
+// void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
+//                                            const QByteArray& request)
+// {
+//     // --- Parse XYZ from request line, e.g. "GET /tiles/12/2134/1455.png HTTP/1.1"
+//     QString req = QString::fromUtf8(request);
+//     QRegularExpression re(R"(/tiles/(\d+)/(\d+)/(\d+)\.png)");
+//     auto match = re.match(req);
+
+//     if (!match.hasMatch()) {
+//         socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
+//         return;
+//     }
+
+//     int z = match.captured(1).toInt();
+//     int x = match.captured(2).toInt();
+//     int y = match.captured(3).toInt();
+
+//     // --- Convert XYZ tile to EPSG:3857 bounds
+//     // Standard Web Mercator tile math
+//     auto tileToMercator = [](int xx, int yy, int zz) -> QRectF {
+//         double n = std::pow(2.0, zz);
+//         double originShift = 2 * M_PI * 6378137.0 / 2.0; // ~20037508.34
+//         double tileSize = 2 * originShift / n;
+//         double minX = xx * tileSize - originShift;
+//         double maxX = minX + tileSize;
+//         double maxY = originShift - yy * tileSize;
+//         double minY = maxY - tileSize;
+//         return QRectF(QPointF(minX, minY), QPointF(maxX, maxY));
+//     };
+
+//     QRectF mercBounds = tileToMercator(x, y, z);
+
+//     // Extract explicitly — don't trust QRectF top()/bottom() for geo coordinates
+//     double mercMinX = mercBounds.left();
+//     // double mercMaxX = mercBounds.right();
+//     // double mercMinY = mercBounds.y();      // smaller Y = south
+//     double mercMaxY = mercBounds.y() + mercBounds.height(); // larger Y = north
+
+//     // --- Map mercator bounds to pixel coords in warped_dataset_
+//     double gt[6];
+//     warped_dataset_->GetGeoTransform(gt);
+//     qDebug() << "Tile mercBounds top=" << mercBounds.top() 
+//          << "left=" << mercBounds.left()
+//          << "bottom=" << mercBounds.bottom()
+//          << "right=" << mercBounds.right();
+//     qDebug() << "Dataset gt[0]=" << gt[0] << "gt[3]=" << gt[3]
+//          << "gt[1]=" << gt[1] << "gt[5]=" << gt[5];
+
+    
+//     // Calculate native zoom level from resolution
+//     // Web Mercator full extent = 40075016m, tile = 256px
+//     // zoom = log2(40075016 / (256 * resolution))
+//     double nativeZoom = std::log2(40075016.0 / (256.0 * gt[1]));
+//     int minZoom = static_cast<int>(std::floor(nativeZoom)) - 2; // allow 2 levels below native
+
+//     qDebug() << "Native zoom:" << nativeZoom << "Min zoom:" << minZoom;
+
+//     if (z < minZoom) {
+//         qDebug() << "Zoom" << z << "too low (min" << minZoom << "), sending empty tile";
+//         sendEmptyTile(socket);
+//         return;
+//     }
+
+//     double mercTileSize = mercBounds.width();
+
+//     int rasterX = static_cast<int>((mercMinX  - gt[0]) / gt[1]);
+//     int rasterY = static_cast<int>((mercMaxY  - gt[3]) / gt[5]);
+//     int rasterW = static_cast<int>(std::round(mercTileSize  / gt[1]));
+//     int rasterH = static_cast<int>(std::round(mercTileSize  / std::abs(gt[5])));
+
+//     qDebug() << "Raw pixel window: x=" << rasterX << "y=" << rasterY
+//          << "w=" << rasterW << "h=" << rasterH;
+
+//     int dsWidth  = warped_dataset_->GetRasterXSize();
+//     int dsHeight = warped_dataset_->GetRasterYSize();
+
+//     qDebug() << "Raster size dsWidth = " << dsWidth << " dsHeight = " << dsHeight;
+
+//     // If the source window is larger than the whole dataset, this zoom is too low
+//     if (rasterW > dsWidth || rasterH > dsHeight) {
+//         qDebug() << "Source window is larger than the whole dataset, this zoom is too low";
+//         sendEmptyTile(socket);
+//         return;
+//     }
+
+//     // Check if tile is completely outside raster
+//     if (rasterX >= dsWidth  || rasterY >= dsHeight ||
+//         rasterX + rasterW <= 0 || rasterY + rasterH <= 0)
+//     {
+//         qDebug() << "Tile outside raster extent, sending empty tile";
+//         sendEmptyTile(socket);
+//         return;
+//     }
+
+//     // Clamp to raster bounds
+//     rasterX = std::max(0, rasterX);
+//     rasterY = std::max(0, rasterY);
+//     rasterW = std::min(rasterW, dsWidth  - rasterX);
+//     rasterH = std::min(rasterH, dsHeight - rasterY);
+
+//     qDebug() << "Clamped pixel window: x=" << rasterX << "y=" << rasterY
+//          << "w=" << rasterW << "h=" << rasterH;
+
+//     // --- Read RGB via RasterIO (resamples to 256x256 using overviews automatically)
+//     const int TILE_SIZE = 256;
+//     std::vector<uint8_t> buf(TILE_SIZE * TILE_SIZE * 3);
+
+//     CPLErr err = warped_dataset_->RasterIO(
+//         GF_Read,
+//         rasterX, rasterY, rasterW, rasterH,   // source window
+//         buf.data(), TILE_SIZE, TILE_SIZE,       // output size (GDAL picks overview)
+//         GDT_Byte,
+//         3, nullptr,                             // 3 bands, default order
+//         3, TILE_SIZE * 3, 1,                   // pixel, line, band spacing
+//         nullptr
+//     );
+
+//     if (err != CE_None) {
+//         // Tile is outside raster extent — return transparent PNG
+//         sendEmptyTile(socket);
+//         return;
+//     }
+
+//     // --- Encode to PNG (Qt handles this cleanly)
+//     QImage img(buf.data(), TILE_SIZE, TILE_SIZE, TILE_SIZE * 3, QImage::Format_RGB888);
+//     QByteArray png;
+//     QBuffer pngBuf(&png);
+//     img.save(&pngBuf, "PNG");
+
+//     // --- Write HTTP response
+//     QByteArray response;
+//     response  = "HTTP/1.1 200 OK\r\n";
+//     response += "Content-Type: image/png\r\n";
+//     response += "Content-Length: " + QByteArray::number(png.size()) + "\r\n";
+//     response += "Access-Control-Allow-Origin: *\r\n";
+//     response += "\r\n";
+//     response += png;
+
+//     socket->write(response);
+//     socket->flush();
+// }
 
 QByteArray OrthomosaicBackend::renderTile(int z, int x, int y)
 {
@@ -525,6 +871,23 @@ QByteArray OrthomosaicBackend::renderTileFromGDAL(int z, int x, int y)
     return out;
 }
 
+void OrthomosaicBackend::sendEmptyTile(QTcpSocket* socket)
+{
+    QByteArray png(reinterpret_cast<const char*>(kEmptyPng), sizeof(kEmptyPng));
+
+    QByteArray response;
+    response  = "HTTP/1.1 200 OK\r\n";
+    response += "Content-Type: image/png\r\n";
+    response += "Content-Length: " + QByteArray::number(png.size()) + "\r\n";
+    response += "Access-Control-Allow-Origin: *\r\n";
+    response += "Cache-Control: public, max-age=86400\r\n"; // tiles outside extent never change
+    response += "\r\n";
+    response += png;
+
+    socket->write(response);
+    socket->flush();
+}
+
 GDALDataset* OrthomosaicBackend::acquireDataset()
 {
     QMutexLocker lock(&this->dataset_mutex_);
@@ -609,6 +972,7 @@ void OrthomosaicBackend::cleanupPreviousSession()
     }
 
     ortho_tile_url_.clear();
+    ortho_cancelled_ = false;
 }
 
 void OrthomosaicBackend::setOrthoProgress(double prog, const QString& status)
