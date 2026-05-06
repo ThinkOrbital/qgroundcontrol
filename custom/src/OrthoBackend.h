@@ -47,7 +47,9 @@ public:
     double orthoProgress() const {return this->ortho_progress_; }
     double orthoOpacity() const {return this->ortho_opacity_; }
     QString orthoStatus() const {return this->ortho_status_; }
-    QString orthoTileUrl() const {return this->ortho_tile_url_; }
+    QString orthoTileUrl() const {
+        qWarning() << "Ortho Tile URL: " << this->ortho_tile_url_;
+        return this->ortho_tile_url_; }
     QString orthoFileName() const {return this->ortho_file_name_; }
     bool orthoReady() const {return this->ortho_ready_; }
     bool orthoProcessing() const {return this->ortho_processing_; }

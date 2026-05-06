@@ -44,18 +44,6 @@ void OrthomosaicBackend::loadGeoTiff(const QString& path)
 
     qDebug() << "Reprojecting to Web Mercator...";
     if (!this->stepReprojectToWebMercator()) return;
-
-    // if (this->ortho_cancelled_) return;
-    // if (!this->stepBuildOverviews()) return;
-
-    // if (this->ortho_cancelled_) return;
-    // if (!this->stepStartTileServer()) return;
-
-    // this->ortho_ready_ = true;
-    // this->ortho_processing_ = false;
-
-    // emit orthoReadyChanged();
-    // emit orthoProcessingChanged();
 }
 
 // Step 1: Validate and Open GeoTiff
@@ -379,7 +367,10 @@ bool OrthomosaicBackend::stepStartTileServer()
         QString("http://localhost:%1/tiles/{z}/{x}/{y}.png")
             .arg(this->qtcp_server_->serverPort());
 
+    this->ortho_ready_ = true;
     qDebug() << "Tile server running at:" << this->ortho_tile_url_;
+
+    emit orthoReadyChanged();
 
     this->ortho_processing_ = false;
     this->setOrthoProgress(100.0, "Ready ✓");
@@ -403,6 +394,8 @@ void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
     int x = match.captured(2).toInt();
     int y = match.captured(3).toInt();
 
+    qDebug() << "x: " << x << " y:" << y << " z:" << z; 
+
     // --- Convert XYZ tile to EPSG:3857 bounds
     // Standard Web Mercator tile math
     double n = std::pow(2.0, z);
@@ -414,35 +407,14 @@ void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
     double maxY = originShift - y * tileSize;
     double minY = maxY - tileSize;
 
-    // double mercMinX = mercBounds.left();
-    // double mercMaxX = mercBounds.right();
-    // double mercMinY = mercBounds.top();      // smaller Y = south
-    // double mercMaxY = mercBounds.bottom(); // larger Y = north
 
     // --- Map mercator bounds to pixel coords in warped_dataset_
     double gt[6];
     warped_dataset_->GetGeoTransform(gt);
-    // qDebug() << "Tile mercBounds top=" << mercBounds.top() 
-    //      << "left=" << mercBounds.left()
-    //      << "bottom=" << mercBounds.bottom()
-    //      << "right=" << mercBounds.right();
-    qDebug() << "Dataset gt[0]=" << gt[0] << "gt[3]=" << gt[3]
-         << "gt[1]=" << gt[1] << "gt[5]=" << gt[5];
 
-    
-    // Calculate native zoom level from resolution
-    // Web Mercator full extent = 40075016m, tile = 256px
-    // zoom = log2(40075016 / (256 * resolution))
-    // double nativeZoom = std::log2(40075016.0 / (256.0 * gt[1]));
-    // int minZoom = static_cast<int>(std::floor(nativeZoom)) - 2; // allow 2 levels below native
+    // qDebug() << "Dataset gt[0]=" << gt[0] << "gt[3]=" << gt[3]
+    //      << "gt[1]=" << gt[1] << "gt[5]=" << gt[5];
 
-    // qDebug() << "Native zoom:" << nativeZoom << "Min zoom:" << minZoom;
-
-    // if (z < minZoom) {
-    //     qDebug() << "Zoom" << z << "too low (min" << minZoom << "), sending empty tile";
-    //     sendEmptyTile(socket);
-    //     return;
-    // }
 
     int rawX = static_cast<int>((minX - gt[0]) / gt[1]);
     int rawY = static_cast<int>((maxY - gt[3]) / gt[5]); // gt[5] negative → positive pixel offset
@@ -558,147 +530,7 @@ void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
     socket->flush();
 }
 
-// void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
-//                                            const QByteArray& request)
-// {
-//     // --- Parse XYZ from request line, e.g. "GET /tiles/12/2134/1455.png HTTP/1.1"
-//     QString req = QString::fromUtf8(request);
-//     QRegularExpression re(R"(/tiles/(\d+)/(\d+)/(\d+)\.png)");
-//     auto match = re.match(req);
 
-//     if (!match.hasMatch()) {
-//         socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
-//         return;
-//     }
-
-//     int z = match.captured(1).toInt();
-//     int x = match.captured(2).toInt();
-//     int y = match.captured(3).toInt();
-
-//     // --- Convert XYZ tile to EPSG:3857 bounds
-//     // Standard Web Mercator tile math
-//     auto tileToMercator = [](int xx, int yy, int zz) -> QRectF {
-//         double n = std::pow(2.0, zz);
-//         double originShift = 2 * M_PI * 6378137.0 / 2.0; // ~20037508.34
-//         double tileSize = 2 * originShift / n;
-//         double minX = xx * tileSize - originShift;
-//         double maxX = minX + tileSize;
-//         double maxY = originShift - yy * tileSize;
-//         double minY = maxY - tileSize;
-//         return QRectF(QPointF(minX, minY), QPointF(maxX, maxY));
-//     };
-
-//     QRectF mercBounds = tileToMercator(x, y, z);
-
-//     // Extract explicitly — don't trust QRectF top()/bottom() for geo coordinates
-//     double mercMinX = mercBounds.left();
-//     // double mercMaxX = mercBounds.right();
-//     // double mercMinY = mercBounds.y();      // smaller Y = south
-//     double mercMaxY = mercBounds.y() + mercBounds.height(); // larger Y = north
-
-//     // --- Map mercator bounds to pixel coords in warped_dataset_
-//     double gt[6];
-//     warped_dataset_->GetGeoTransform(gt);
-//     qDebug() << "Tile mercBounds top=" << mercBounds.top() 
-//          << "left=" << mercBounds.left()
-//          << "bottom=" << mercBounds.bottom()
-//          << "right=" << mercBounds.right();
-//     qDebug() << "Dataset gt[0]=" << gt[0] << "gt[3]=" << gt[3]
-//          << "gt[1]=" << gt[1] << "gt[5]=" << gt[5];
-
-    
-//     // Calculate native zoom level from resolution
-//     // Web Mercator full extent = 40075016m, tile = 256px
-//     // zoom = log2(40075016 / (256 * resolution))
-//     double nativeZoom = std::log2(40075016.0 / (256.0 * gt[1]));
-//     int minZoom = static_cast<int>(std::floor(nativeZoom)) - 2; // allow 2 levels below native
-
-//     qDebug() << "Native zoom:" << nativeZoom << "Min zoom:" << minZoom;
-
-//     if (z < minZoom) {
-//         qDebug() << "Zoom" << z << "too low (min" << minZoom << "), sending empty tile";
-//         sendEmptyTile(socket);
-//         return;
-//     }
-
-//     double mercTileSize = mercBounds.width();
-
-//     int rasterX = static_cast<int>((mercMinX  - gt[0]) / gt[1]);
-//     int rasterY = static_cast<int>((mercMaxY  - gt[3]) / gt[5]);
-//     int rasterW = static_cast<int>(std::round(mercTileSize  / gt[1]));
-//     int rasterH = static_cast<int>(std::round(mercTileSize  / std::abs(gt[5])));
-
-//     qDebug() << "Raw pixel window: x=" << rasterX << "y=" << rasterY
-//          << "w=" << rasterW << "h=" << rasterH;
-
-//     int dsWidth  = warped_dataset_->GetRasterXSize();
-//     int dsHeight = warped_dataset_->GetRasterYSize();
-
-//     qDebug() << "Raster size dsWidth = " << dsWidth << " dsHeight = " << dsHeight;
-
-//     // If the source window is larger than the whole dataset, this zoom is too low
-//     if (rasterW > dsWidth || rasterH > dsHeight) {
-//         qDebug() << "Source window is larger than the whole dataset, this zoom is too low";
-//         sendEmptyTile(socket);
-//         return;
-//     }
-
-//     // Check if tile is completely outside raster
-//     if (rasterX >= dsWidth  || rasterY >= dsHeight ||
-//         rasterX + rasterW <= 0 || rasterY + rasterH <= 0)
-//     {
-//         qDebug() << "Tile outside raster extent, sending empty tile";
-//         sendEmptyTile(socket);
-//         return;
-//     }
-
-//     // Clamp to raster bounds
-//     rasterX = std::max(0, rasterX);
-//     rasterY = std::max(0, rasterY);
-//     rasterW = std::min(rasterW, dsWidth  - rasterX);
-//     rasterH = std::min(rasterH, dsHeight - rasterY);
-
-//     qDebug() << "Clamped pixel window: x=" << rasterX << "y=" << rasterY
-//          << "w=" << rasterW << "h=" << rasterH;
-
-//     // --- Read RGB via RasterIO (resamples to 256x256 using overviews automatically)
-//     const int TILE_SIZE = 256;
-//     std::vector<uint8_t> buf(TILE_SIZE * TILE_SIZE * 3);
-
-//     CPLErr err = warped_dataset_->RasterIO(
-//         GF_Read,
-//         rasterX, rasterY, rasterW, rasterH,   // source window
-//         buf.data(), TILE_SIZE, TILE_SIZE,       // output size (GDAL picks overview)
-//         GDT_Byte,
-//         3, nullptr,                             // 3 bands, default order
-//         3, TILE_SIZE * 3, 1,                   // pixel, line, band spacing
-//         nullptr
-//     );
-
-//     if (err != CE_None) {
-//         // Tile is outside raster extent — return transparent PNG
-//         sendEmptyTile(socket);
-//         return;
-//     }
-
-//     // --- Encode to PNG (Qt handles this cleanly)
-//     QImage img(buf.data(), TILE_SIZE, TILE_SIZE, TILE_SIZE * 3, QImage::Format_RGB888);
-//     QByteArray png;
-//     QBuffer pngBuf(&png);
-//     img.save(&pngBuf, "PNG");
-
-//     // --- Write HTTP response
-//     QByteArray response;
-//     response  = "HTTP/1.1 200 OK\r\n";
-//     response += "Content-Type: image/png\r\n";
-//     response += "Content-Length: " + QByteArray::number(png.size()) + "\r\n";
-//     response += "Access-Control-Allow-Origin: *\r\n";
-//     response += "\r\n";
-//     response += png;
-
-//     socket->write(response);
-//     socket->flush();
-// }
 
 QByteArray OrthomosaicBackend::renderTile(int z, int x, int y)
 {

@@ -66,165 +66,127 @@ Item {
         bottomEdgeLeftInset:    _pipView.bottomEdgeLeftInset
     }
 
+    
+
     Item {
         id:                 mapHolder
         anchors.fill:       parent
 
-        /*property var _activeTiles: ({})
-        property var _tilePool:    []
-
-        function lonToTileX(lon, z) {
-            return Math.floor((lon + 180.0) / 360.0 * Math.pow(2, z))
+        // Tile math functions — accessible by everything in mapHolder scope
+        function tile2lat(y, z) {
+            var n = Math.PI - 2 * Math.PI * y / Math.pow(2, z)
+            return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))
         }
 
-        function latToTileY(lat, z) {
-            var latRad = lat * Math.PI / 180.0
+        function tile2lon(x, z) {
+            return x / Math.pow(2, z) * 360 - 180
+        }
+
+        function lon2tileX(lon, z) {
+            console.log("z:", z, "lon:", lon)
+            return Math.floor((lon + 180) / 360 * Math.pow(2, z))
+        }
+
+        function lat2tileY(lat, z) {
+            console.log("z:", z, "lat:", lat)
+            var rad = lat * Math.PI / 180
+            console.log("rad:", rad)
             return Math.floor(
-                (1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI)
-                / 2.0 * Math.pow(2, z))
-        }
-
-        function tileToCoord(tx, ty, tz) {
-            var n      = Math.pow(2, tz)
-            var lon    = tx / n * 360.0 - 180.0
-            var latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * ty / n)))
-            return QtPositioning.coordinate(latRad * 180.0 / Math.PI, lon)
+                (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2
+                * Math.pow(2, z)
+            )
         }
 
         function updateTiles() {
-            if (!ortho.orthoReady) return
-            if (!ortho.orthoTileUrl || ortho.orthoTileUrl === "") return
-        
-            var z      = Math.floor(mapControl.zoomLevel)
-            var BUFFER = 1
 
-            console.log("Zoom:", z)
+            if (!ortho || !ortho.orthoReady)
+                return
 
-            var nw = mapControl.toCoordinate(Qt.point(0, 0))
-            var se = mapControl.toCoordinate(Qt.point(mapControl.width, mapControl.height))
+            z = Math.floor(mapControl.zoomLevel)
 
-            console.log("NW corner:", nw.latitude, nw.longitude)
-            console.log("SE corner:", se.latitude, se.longitude)
+            //zoom guard
+            if (z < 16 || z > 22)
+                return
 
-            var xMin = lonToTileX(nw.longitude, z) - BUFFER
-            var xMax = lonToTileX(se.longitude, z) + BUFFER
-            var yMin = latToTileY(nw.latitude,  z) - BUFFER
-            var yMax = latToTileY(se.latitude,  z) + BUFFER
+            if (!mapControl.visibleRegion)
+                return
 
-            console.log("Tile range X:", xMin, "to", xMax)
-            console.log("Tile range Y:", yMin, "to", yMax)
+            console.log("visibleRegion:", mapControl.visibleRegion)
+            console.log("boundingGeoRectangle:", mapControl.visibleRegion ? mapControl.visibleRegion.boundingGeoRectangle() : "null")
 
-            // Manually verify tile for known dataset lon
-            var datasetLon = -105.2265  // gt[0] converted to degrees
-            var expectedX = Math.floor((datasetLon + 180.0) / 360.0 * Math.pow(2, z))
-            console.log("Expected tile X for dataset west edge:", expectedX)
-            console.log("NW corner tile X:", lonToTileX(nw.longitude, z))
-            console.log("NW corner lon:", nw.longitude)
+            let rect = mapControl.visibleRegion.boundingGeoRectangle()
 
-            var neededKeys = {}
-            for (var tx = xMin; tx <= xMax; tx++) {
-                for (var ty = yMin; ty <= yMax; ty++) {
-                    neededKeys[z + "/" + tx + "/" + ty] = { z: z, x: tx, y: ty }
-                }
-            }
+            let tx0 = lon2tileX(rect.topLeft.longitude, z)
+            let tx1 = lon2tileX(rect.bottomRight.longitude, z)
+            let ty0 = lat2tileY(rect.topLeft.latitude, z)
+            let ty1 = lat2tileY(rect.bottomRight.latitude, z)
 
-            // Return unneeded tiles to pool
-            for (var key in _activeTiles) {
-                if (!(key in neededKeys)) {
-                    var old = _activeTiles[key]
-                    old.visible = false
-                    _tilePool.push(old)
-                    delete _activeTiles[key]
-                }
-            }
-            console.log("Total tiles to request:", Object.keys(neededKeys).length)
-            // Assign or create tiles
-            for (var k in neededKeys) {
-                console.log("Requesting tile:", k)
-                if (k in _activeTiles) continue
+            console.log("raw tile bounds:", 
+                        "tx", tx0, tx1,
+                        "ty", ty0, ty1)
 
-                var t   = neededKeys[k]
-                var url = ortho.orthoTileUrl
-                            .replace("{z}", t.z)
-                            .replace("{x}", t.x)
-                            .replace("{y}", t.y)
+            let minX = Math.min(tx0, tx1)
+            let maxX = Math.max(tx0, tx1)
+            let minY = Math.min(ty0, ty1)
+            let maxY = Math.max(ty0, ty1)
 
-                var tileObj
-                if (_tilePool.length > 0) {
-                    tileObj          = _tilePool.pop()
-                    tileObj.tileX    = t.x
-                    tileObj.tileY    = t.y
-                    tileObj.tileZ    = t.z
-                    tileObj.imageUrl = url
-                    tileObj.visible  = true
-                } else {
-                    tileObj = tileComponent.createObject(mapControl, {
-                        "tileX": t.x, "tileY": t.y, "tileZ": t.z, "imageUrl": url
+            console.log("tile bounds:",
+                "X:", minX, maxX,
+                "Y:", minY, maxY)
+
+            console.log("zoom:", mapControl.zoomLevel)
+            console.log("center:", mapControl.center)
+            console.log("width/height:", mapControl.width, mapControl.height)
+
+            if ((maxX - minX) * (maxY - minY) > 100)
+                return
+
+            tileModel.clear()
+
+            console.log("ortho tile url is: ", ortho.orthoTileUrl)
+            console.log("ortho object:", ortho)
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    tileModel.append({
+                        x: x,
+                        y: y,
+                        z: z,
+                        url: ortho.orthoTileUrl
+                                .replace("{z}", z)
+                                .replace("{x}", x)
+                                .replace("{y}", y)
                     })
                 }
-
-                _activeTiles[k] = tileObj
             }
+
+            //visibleTiles = tiles
+            console.log("tiles count:", tileModel.count)
         }
 
-        function clearTiles() {
-            for (var key in _activeTiles) {
-                _activeTiles[key].destroy()
-            }
-            _activeTiles = {}
-            for (var i = 0; i < _tilePool.length; i++) {
-                _tilePool[i].destroy()
-            }
-            _tilePool = []
+        ListModel {
+            id: tileModel
         }
 
-        Timer { id: panDebounce;  interval: 80;  onTriggered: mapHolder.updateTiles() }
-        Timer { id: zoomDebounce; interval: 300; onTriggered: mapHolder.updateTiles() }
+        //orthomosiac zoom and map movement
+        Connections {
+            target: mapControl
+
+            function onCenterChanged() { mapHolder.updateTiles() }
+            function onZoomLevelChanged() { mapHolder.updateTiles() }
+        }
+
 
         Connections {
-            target: mapControl 
-            function onCenterChanged()    { panDebounce.restart()  }
-            function onZoomLevelChanged() { zoomDebounce.restart() }
-        }
+            target: typeof ortho !== "undefined" ? ortho : null
 
-        Connections {
-            target: ortho
             function onOrthoReadyChanged() {
-                if (ortho.orthoReady) mapHolder.updateTiles()
-                else                    mapHolder.clearTiles()
-            }
-        }
-
-        Component {
-            id: tileComponent
-
-            MapQuickItem {
-                property int    tileX
-                property int    tileY
-                property int    tileZ
-                property string imageUrl
-
-                anchorPoint.x: 0
-                anchorPoint.y: 0
-                zoomLevel:     tileZ + 1
-                coordinate:    mapHolder.tileToCoord(tileX, tileY, tileZ)
-
-                sourceItem: Image {
-                    source:   imageUrl
-                    width:    256
-                    height:   256
-                    opacity:  ortho.orthoOpacity
-                    visible:  ortho.orthoReady
-                    cache:    true
-                    fillMode: Image.Stretch
-
-                    onStatusChanged: {
-                        if (status === Image.Error)
-                            visible = false
-                    }
+                console.log("Ortho ready signal fired")
+                if (ortho && ortho.orthoReady) {
+                    mapHolder.updateTiles()
                 }
             }
-        }*/
+        }
 
         FlyViewMap {
             id:                     mapControl
@@ -239,6 +201,44 @@ Item {
         
             property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
             property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
+
+    
+
+            property int tileSize: 256
+
+            Repeater {
+                model: tileModel
+
+                delegate: MapQuickItem {
+                    Component.onCompleted: console.log("MapQuickItem created at", coordinate)
+                    coordinate: QtPositioning.coordinate(
+                        mapHolder.tile2lat(model.y, model.z),
+                        mapHolder.tile2lon(model.x, model.z)
+                    )
+                    anchorPoint: Qt.point(0, 0)
+
+                    sourceItem: Rectangle {
+                        width: 256
+                        height: 256
+                        color: "red"
+                        opacity: 0.8
+                    }
+                    /*sourceItem: Image {
+                        source:      model.url
+                        width:       256
+                        height:      256
+                        cache:       false
+                        asynchronous: true
+                        onStatusChanged: {
+                            if (status === Image.Error)   visible = false
+                            if (status === Image.Ready)   console.log("Tile loaded:", source)
+                        }
+                    }*/
+                }
+            }
+          
+
+            
 
             MapCircle {
                 center: backend.centerCoordinate
@@ -389,7 +389,6 @@ Item {
                 followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
             }
-        
         
         
         }
