@@ -23,7 +23,7 @@
     "name": "altitude",
     "shortDesc": "Target altitude",
     "type": "double",
-    "default": 0.0,
+    "default": 2.0,
     "minValue": 0.0,
     "maxValue": 120.0,
     "decimalPlaces": 1
