@@ -149,9 +149,10 @@ Item {
             for (let x = minX; x <= maxX; x++) {
                 for (let y = minY; y <= maxY; y++) {
                     tileModel.append({
-                        x: x,
-                        y: y,
-                        z: z,
+                        tileId: z + "_" + x + "_" + y,
+                        tileX: x,
+                        tileY: y,
+                        tileZ: z,
                         url: ortho.orthoTileUrl
                                 .replace("{z}", z)
                                 .replace("{x}", x)
@@ -159,8 +160,6 @@ Item {
                     })
                 }
             }
-
-            //visibleTiles = tiles
             console.log("tiles count:", tileModel.count)
         }
 
@@ -206,24 +205,16 @@ Item {
 
             property int tileSize: 256
 
-            Repeater {
+            MapItemView {
                 model: tileModel
-
                 delegate: MapQuickItem {
-                    Component.onCompleted: console.log("MapQuickItem created at", coordinate)
+                    objectName: tileId
                     coordinate: QtPositioning.coordinate(
-                        mapHolder.tile2lat(model.y, model.z),
-                        mapHolder.tile2lon(model.x, model.z)
+                        mapHolder.tile2lat(tileY, tileZ),
+                        mapHolder.tile2lon(tileX, tileZ)
                     )
                     anchorPoint: Qt.point(0, 0)
-
-                    sourceItem: Rectangle {
-                        width: 256
-                        height: 256
-                        color: "red"
-                        opacity: 0.8
-                    }
-                    /*sourceItem: Image {
+                    sourceItem: Image {
                         source:      model.url
                         width:       256
                         height:      256
@@ -233,12 +224,9 @@ Item {
                             if (status === Image.Error)   visible = false
                             if (status === Image.Ready)   console.log("Tile loaded:", source)
                         }
-                    }*/
+                    }
                 }
             }
-          
-
-            
 
             MapCircle {
                 center: backend.centerCoordinate
