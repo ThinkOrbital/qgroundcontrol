@@ -299,8 +299,7 @@ void BackendController::processTelemetryUpdates()
         {
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time = current_time - this->scan_msg_time_;
-            auto duration_s = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
-            if(duration_s >= 1.0)
+            if(elapsed_time >= std::chrono::seconds(1))
             {   
                 //resend scan message
                 this->sendStartScan(this->prev_scan_msg_state_);
