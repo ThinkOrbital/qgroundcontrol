@@ -398,7 +398,9 @@ private:
     void sendStartScan(StartScan state);
     void send_ack(AckType type, uint8_t src_id);
 
-    // std::unique_ptr<DroneControl> ctrl;
+
+
+    // sd::unique_ptr<DroneControl> ctrl;
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
     double sep_distance_ { 10.0 };
     double bearing_ { 0.0 };

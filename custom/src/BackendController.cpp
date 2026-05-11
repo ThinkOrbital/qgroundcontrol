@@ -6,6 +6,23 @@
 
 #include "Comms/MAVLinkProtocol.h"
 
+QDebug operator<<(QDebug dbg, const FlightState& flight_state)
+{
+    switch(flight_state)
+    {
+        case FlightState::init: return dbg << "Init";
+        case FlightState::takeoff: return dbg << "Takeoff";
+        case FlightState::coord_flight: return dbg << "Coordinated Flight";
+        case FlightState::alignment: return dbg << "Alignment";
+        case FlightState::descend: return dbg << "Descend";
+        case FlightState::scan: return dbg << "Scan";
+        case FlightState::operator_input: return dbg << "Operator Input";
+        case FlightState::rtl: return dbg << "RTL";
+        case FlightState::test: return dbg << "Test";
+        default: return dbg << "Unknown";
+    }
+}
+
 // Constructor
 BackendController::BackendController(QObject *parent)
     : QObject(parent)
@@ -369,7 +386,6 @@ void BackendController::processTelemetryUpdates()
         {
             qDebug() << "Companion computer sysid" << sysid << "timed out!";
             subscribed_map_[sysid] = false;            
-            // this->flight_state_map_.erase(sysid);
 
             if(subscribed_map_[SYSID_EMITTER] == false)
             {
@@ -395,7 +411,7 @@ void BackendController::processTelemetryUpdates()
         for(const auto& [sysid, state] : this->flight_state_map_)
         {
            
-            qDebug() << "UAV " << +sysid << " changed its state to " << +static_cast<uint8_t>(this->flight_state_map_[sysid]);
+            qDebug() << "UAV " << +sysid << " changed its state to " << (this->flight_state_map_[sysid]);
     
             switch(this->flight_state_map_[sysid])
             {
