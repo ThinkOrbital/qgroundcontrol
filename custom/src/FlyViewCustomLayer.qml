@@ -52,7 +52,19 @@ Item {
         : false
     property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
 
-    property var _sepDistFact: QGroundControl.settingsManager.flyViewSettings.custSeparationDistance
+    property var  _customSettings:  QGroundControl.corePlugin.customSettings
+    property var _sepDistFact: _customSettings.separationDistance
+    property var _bearingFact: _customSettings.bearing
+    property var _goalAltitudeFact: _customSettings.altitude
+    property var _detOffsetFact: _customSettings.detOffset
+    property var _emAltOffsetFact: _customSettings.emAltOffset
+    property var _flightAltFact: _customSettings.flightAlt
+    property var _flightVelFact: _customSettings.flightVel
+    property var _goalLatFact: _customSettings.goalLat
+    property var _goalLonFact: _customSettings.goalLon
+    property var _numImagesFact: _customSettings.numImages
+    property var _fileNameFact: _customSettings.fileName
+    property var _detectorXrayWindowFact: _customSettings.detectorXrayWindow
 
 
     function secondsToHHMMSS(timeS) {
@@ -171,7 +183,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     text: backend.centerCoordinate.latitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
@@ -191,7 +203,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     text: backend.centerCoordinate.longitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
@@ -211,13 +223,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.altitude
-                    onEditingFinished: backend.altitude = text
+                    fact: _goalAltitudeFact
                 }
 
                 // -------- BEARING --------
@@ -227,13 +238,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
-                    text: backend.bearing
-                    onEditingFinished: backend.bearing = text
+                    fact: _bearingFact
                 }
 
                 // -------- DETECTOR POS OFFSET --------
@@ -243,17 +253,17 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.detOffset
-                    onEditingFinished: backend.detOffset = text
+                    fact: _detOffsetFact
                 }
             }
         }
     }
+
     QGCGroupBox {
         id: uavDropdown
         anchors.left: targetDropdown.right
@@ -301,20 +311,19 @@ Item {
                 Layout.fillWidth: true
                 spacing: 2
             
-            // -------- SEPARATION --------
-            QGCLabel {
-                text: "UAV-UAV Separation (m):"
-                Layout.alignment: Qt.AlignVCenter
-                Layout.fillWidth: false
-            }
+                // -------- SEPARATION --------
+                QGCLabel {
+                    text: "UAV-UAV Separation (m):"
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.fillWidth: false
+                }
 
-            FactTextField {
-                Layout.fillWidth: true
-                fact: _sepDistFact
-
-                unitsLabel: "m"
-                showUnits: true
-            }
+                FactTextField {
+                    Layout.fillWidth: true
+                    fact: _sepDistFact
+                    unitsLabel: "m"
+                    showUnits: true
+                }
 
                 // -------- EMITTER ALT OFFSET --------
                 QGCLabel {
@@ -323,13 +332,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                    fact: _emAltOffsetFact
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.emAltOffset
-                    onEditingFinished: backend.emAltOffset = text
                 }
 
                 // -------- Flight ALTITUDE --------
@@ -339,13 +347,12 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                    fact: _flightAltFact
                     unitsLabel: "m"
                     showUnits: true
-                    text: backend.flightAlt
-                    onEditingFinished: backend.flightAlt = text
                 }
 
                 // -------- Flight VELOCITY --------
@@ -355,131 +362,16 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                    fact: _flightVelFact
                     unitsLabel: "m/s"
                     showUnits: true
-                    text: backend.flightVel
-                    onEditingFinished: backend.flightVel = text
                 }
-            }
+            }   
         }
     }     
-
-    /*QGCGroupBox {
-        id: emitterDropdown
-        anchors.left: uavDropdown.right
-        anchors.top: statusBar.bottom
-        anchors.topMargin: _toolsMargin/2
-        //anchors.leftMargin: parentToolInsets.leftEdgeTopInset + uavDropdown.width + targetDropdown.width + 2*nudgeBox.width + 2*_toolsMargin
-        //width: parentToolInsets.leftEdgeTopInset - _toolsMargin
-
-        background: Rectangle {
-            color:        Qt.rgba(qgcPal.window.r, qgcPal.window.g, qgcPal.window.b, 0.4)  // 0.0 = fully transparent, 1.0 = fully opaque
-            radius:       ScreenTools.defaultFontPixelWidth * 0.75
-            border.color: Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
-            border.width: 1
-        }
-
-        ColumnLayout{
-            Layout.fillWidth: true
-            
-            // ================= EMITTER DROPDOWN ================
-            // Header row
-            RowLayout {
-                Layout.fillWidth: true
-
-                QGCLabel {
-                    id:             emitterHeader
-                    text:           (emitterExpanded ? "▼ " : "▶ ") + "Emitter Info"
-                    font.pointSize: ScreenTools.smallFontPointSize
-                    font.bold:      true
-
-                    property bool emitterExpanded: false
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked:    parent.emitterExpanded = !parent.emitterExpanded
-                    }
-                }
-            }
-            
-            // Divider
-            Rectangle {
-                Layout.fillWidth: true
-                height:           1
-                color:            Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
-            }
-
-            ColumnLayout {
-                visible: emitterHeader.emitterExpanded
-                Layout.fillWidth: true
-                spacing: 2
-
-                QGCLabel { text: "Test duration" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterTestDurationMs
-                    onEditingFinished:
-                        backend.emitterTestDurationMs = text
-                }
-
-                QGCLabel { text: "Telemetry cadence" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterTelemetryCadenceMs
-                    onEditingFinished:
-                        backend.emitterTelemetryCadenceMs = text
-                }
-
-                QGCLabel { text: "X-ray exposure" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterXrayExposureMs
-                    onEditingFinished:
-                        backend.emitterXrayExposureMs = text
-                }
-
-                QGCLabel { text: "X-ray voltage" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "kV"
-                    showUnits: true
-                    text: backend.emitterXrayVoltageKv
-                    onEditingFinished:
-                        backend.emitterXrayVoltageKv = text
-                }
-
-                QGCLabel { text: "X-ray current" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "µA"
-                    showUnits: true
-                    text: backend.emitterXrayCurrentUa
-                    onEditingFinished:
-                        backend.emitterXrayCurrentUa = text
-                }
-
-                QGCLabel { text: "X-ray comms timeout" }
-                QGCTextField {
-                    Layout.fillWidth: true
-                    unitsLabel: "ms"
-                    showUnits: true
-                    text: backend.emitterCommsBlockTimeoutMs
-                    onEditingFinished:
-                        backend.emitterCommsBlockTimeoutMs = text
-                }
-                
-            }
-        }
-    }*/
 
 
     QGCGroupBox {
@@ -951,6 +843,20 @@ Item {
         }
     }
 
+    Component.onCompleted: {
+        backend.sepDistance = _sepDistFact.value
+        backend.bearing = _bearingFact.value
+        backend.altitude = _goalAltitudeFact.value
+        backend.detOffset = _detOffsetFact.value
+        backend.emAltOffset = _emAltOffsetFact.value
+        backend.flightAlt = _flightAltFact.value
+        backend.flightVel = _flightVelFact.value
+        backend.goalLat = _goalLatFact.value
+        backend.goalLon = _goalLonFact.value
+        backend.numImages = _numImagesFact.value
+        backend.fileName = _fileNameFact.value
+        backend.detectorXrayWindow = _detectorXrayWindowFact.value
+    }
     Connections {
         target: _sepDistFact
 
@@ -959,8 +865,92 @@ Item {
                 _sepDistFact.value
         }
     }
-    Component.onCompleted: {
-        backend.sepDistance = _sepDistFact.value
-    }
+    Connections {
+        target: _bearingFact
 
+        function onValueChanged() {
+            backend.bearing =
+                _bearingFact.value
+        }
+    }
+    Connections {
+        target: _goalAltitudeFact
+
+        function onValueChanged() {
+            backend.altitude =
+                _goalAltitudeFact.value
+        }
+    }
+    Connections {
+        target: _detOffsetFact
+
+        function onValueChanged() {
+            backend.detOffset =
+                _detOffsetFact.value
+        }
+    }
+    Connections {
+        target: _emAltOffsetFact
+
+        function onValueChanged() {
+            backend.emAltOffset =
+                _emAltOffsetFact.value
+        }
+    }
+    Connections {
+        target: _flightAltFact
+
+        function onValueChanged() {
+            backend.flightAlt =
+                _flightAltFact.value
+        }
+    }
+    Connections {
+        target: _flightVelFact
+
+        function onValueChanged() {
+            backend.flightVel =
+                _flightVelFact.value
+        }
+    }
+    Connections {
+        target: _goalLatFact
+
+        function onValueChanged() {
+            backend.goalLat =
+                _goalLatFact.value
+        }
+    }
+    Connections {
+        target: _goalLonFact
+
+        function onValueChanged() {
+            backend.goalLon =
+                _goalLonFact.value
+        }
+    }
+    Connections {
+        target: _numImagesFact
+
+        function onValueChanged() {
+            backend.numImages =
+                _numImagesFact.value
+        }
+    }
+    Connections {
+        target: _fileNameFact
+
+        function onValueChanged() {
+            backend.fileName =
+                _fileNameFact.value
+        }
+    }
+    Connections {
+        target: _detectorXrayWindowFact
+
+        function onValueChanged() {
+            backend.detectorXrayWindow =
+                _detectorXrayWindowFact.value
+        }
+    }
 }
