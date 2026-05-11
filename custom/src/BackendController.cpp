@@ -320,11 +320,10 @@ void BackendController::processTelemetryUpdates()
             || (this->msg_ack_map_[SYSID_EMITTER] != AckType::ack_target)) 
         {
             auto current_time = std::chrono::steady_clock::now();
-            auto elapsed_time = current_time - this->targ_msg_time_;
-            auto duration_s = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();          
-            if(duration_s >= 1.0)
+            auto elapsed_time = current_time - this->targ_msg_time_;        
+            if(elapsed_time >= std::chrono::seconds(1))
             {   
-                //resend scan message
+                //resend target message
                 this->sendGoal();
                 qDebug() << "Resend target message";
             }
@@ -342,10 +341,11 @@ void BackendController::processTelemetryUpdates()
         }
         else
         {
-            auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - this->start_msg_time_);
-            if(duration.count() >= 1.0)
+            auto current_time = std::chrono::steady_clock::now();
+            auto elapsed_time = current_time - this->targ_msg_time_; 
+            if(elapsed_time >= std::chrono::seconds(1))
             {   
-                //resend scan message
+                //resend start message
                 this->sendStartMission(this->prev_mission_msg_state_);
                 qDebug() << "Resend start message";
             }
