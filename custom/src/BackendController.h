@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <chrono>
 #include <QGeoCoordinate>
 #include <QQuaternion>
 #include <QDateTime>
@@ -114,13 +115,6 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
 
-    //payload settings
-    // Q_PROPERTY(uint32_t emitterTestDurationMs READ emitterTestDurationMs WRITE setTestDuration NOTIFY testDurationChanged)
-    // Q_PROPERTY(uint32_t emitterTelemetryCadenceMs READ emitterTelemetryCadenceMs WRITE setCadence NOTIFY cadenceChanged)
-    // Q_PROPERTY(uint32_t emitterXrayExposureMs READ emitterXrayExposureMs WRITE setExposure NOTIFY exposureChanged)
-    // Q_PROPERTY(uint32_t emitterXrayVoltageKv READ emitterXrayVoltageKv WRITE setVoltage NOTIFY voltageChanged)
-    // Q_PROPERTY(uint32_t emitterXrayCurrentUa READ emitterXrayCurrentUa WRITE setCurrent NOTIFY currentChanged)
-    // Q_PROPERTY(uint32_t emitterCommsBlockTimeoutMs READ emitterCommsBlockTimeoutMs WRITE setCommTimeout NOTIFY commTimeoutChanged)
 
     Q_PROPERTY(int32_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
@@ -312,7 +306,7 @@ public:
     Q_INVOKABLE void killScan();
     Q_INVOKABLE void emTubeSeasoning();
     Q_INVOKABLE void payloadCal();
-    void send_ack(AckType type);
+ 
 
     //payload settings
     Q_INVOKABLE void setCadence(const uint32_t telemCadence);
@@ -400,10 +394,13 @@ private slots:
 
 private:
 
-    void sendStartMission(uint8_t & state);
-    void sendStartScan(uint8_t & state);
+    void sendStartMission(StartMission state);
+    void sendStartScan(StartScan state);
+    void send_ack(AckType type, uint8_t src_id);
 
-    // std::unique_ptr<DroneControl> ctrl;
+
+
+    // sd::unique_ptr<DroneControl> ctrl;
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
     double sep_distance_ { 10.0 };
     double bearing_ { 0.0 };
@@ -418,7 +415,7 @@ private:
     bool isResumeMissionButtonEn_ = {false};
     bool isStartScanButtonEn_ = {false};
     bool isStopScanButtonEn_ = {false};
-    bool isSendGoalButtonEn_ = {true};
+    bool isSendGoalButtonEn_ = {false};
     bool isEndMissionButtonEn_ = {false};
     
     bool targMsgSent_ = {false};
@@ -427,6 +424,8 @@ private:
     bool detConn_ = {false};
     bool descend2Targ = {false};
     bool mapCentered_ = {false};
+
+    bool singleUAV_ = {false};
 
     //payload
     StartScan scan_state_ {StartScan::scan_off};
@@ -478,11 +477,22 @@ private:
     Vehicle* _vehicle = nullptr;
 
 
-    // Mission State
-    std::map<uint8_t, uint8_t> uav_state_map_;
+    // // Mission State
+    // std::map<uint8_t, uint8_t> uav_state_map_;
     // Subscription Status
     std::map<uint8_t, bool> subscribed_map_;
     std::map<uint8_t, bool> connection_status_map_; //ToDo: keep track of connected/disconnected
+
+    bool sent_start_msg_ {false};
+    bool sent_scan_msg_ {false};
+    bool sent_targ_msg_ {false};
+
+    std::chrono::steady_clock::time_point start_msg_time_;
+    std::chrono::steady_clock::time_point scan_msg_time_;
+    std::chrono::steady_clock::time_point targ_msg_time_;
+
+    StartMission prev_mission_msg_state_;
+    StartScan prev_scan_msg_state_;
 
     std::atomic<bool> position_updated_{false};
     std::atomic<bool> gps_info_updated_{false};
@@ -502,4 +512,11 @@ private:
     const uint8_t SYSID_DETECTOR_COMP {11};
     const uint8_t SYSID_RTK {124};
 };
+
+//template to check multiple enum types at once.
+template<typename T, typename... Args>
+bool is_one_of(T val, Args... args) {
+    return ((val == args) || ...);
+}
+
 
