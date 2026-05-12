@@ -47,12 +47,6 @@ void CustomPlugin::init()
     _customSettings = new CustomSettings(nullptr);
 }
 
-void CustomPlugin::init()
-{
-    // If this goes in the constructor, it causes a deadlock.
-    _customSettings = new CustomSettings(nullptr);
-}
-
 QGCCorePlugin *CustomPlugin::instance()
 {
     return _customPluginInstance();
