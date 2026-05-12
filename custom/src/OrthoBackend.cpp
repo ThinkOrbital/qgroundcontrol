@@ -153,7 +153,7 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
         qDebug() << "gdalwarp process started successfully";
     });
 
-    connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
+    /*connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
         QString out = proc->readAllStandardOutput();
         qDebug() << "[gdalwarp stdout]" << out;
         
@@ -169,6 +169,53 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
             double mapped = 5.0 + (lastVal / 100.0) * 35.0;
             setOrthoProgress(mapped, "Warping to EPSG:3857...");
         }
+    });*/
+
+    connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
+        static QString buffer;
+        buffer += proc->readAllStandardOutput();
+        // qDebug() << "[gdalwarp stdout]" << buffer;
+
+        // gdalwarp format: "0...10...20...30..." 
+        // Each number is followed by 3 dots before the next number.
+        // We track both the last confirmed integer and trailing dots to interpolate.
+
+        double bestProgress = -1.0;
+        int searchPos = 0;
+
+        // Match either a number (anchor) or a lone dot (sub-step)
+        QRegularExpression re(R"((\d+)(\.*)|(\.+))");
+        auto it = re.globalMatch(buffer, searchPos);
+
+        int lastAnchor = -1;   // last integer we saw (0-100)
+        int trailingDots = 0;  // dots after the last integer
+
+        while (it.hasNext()) {
+            auto match = it.next();
+            if (!match.captured(1).isEmpty()) {
+                // It's a number (possibly followed by some dots in the same match)
+                lastAnchor = match.captured(1).toInt();
+                trailingDots = match.captured(2).length();
+            } else {
+                // It's a standalone dot group (shouldn't happen often, but handle it)
+                trailingDots += match.captured(3).length();
+            }
+
+            if (lastAnchor >= 0) {
+                // Each segment between integers has 3 dots → each dot = 1/3 of a 10-unit step
+                // But clamp dots to max 3 to avoid overshooting the next anchor
+                int dots = qMin(trailingDots, 3);
+                double interpolated = lastAnchor + (dots / 3.0) * 10.0;
+                interpolated = qMin(interpolated, 100.0);
+
+                // Map 0-100 → 5-40%
+                double mapped = 5.0 + (interpolated / 100.0) * 35.0;
+                bestProgress = mapped;
+            }
+        }
+
+        if (bestProgress >= 0.0)
+            setOrthoProgress(bestProgress, "Warping to EPSG:3857...");
     });
 
     connect(proc, &QProcess::readyReadStandardError, this, [this, proc]()
@@ -184,6 +231,9 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
     connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this, proc](int code, QProcess::ExitStatus status)
     {
+        static QString buffer;
+        buffer.clear();
+
         if(this->ortho_cancelled_) return;
 
         proc->deleteLater();
@@ -237,6 +287,53 @@ bool OrthomosaicBackend::stepBuildOverviews()
 
     QProcess* proc = new QProcess(this);
 
+    connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
+        static QString buffer;
+        buffer += proc->readAllStandardOutput();
+        // qDebug() << "[gdaloverview stdout]" << buffer;
+
+        // format: "0...10...20...30..." 
+        // Each number is followed by 3 dots before the next number.
+        // We track both the last confirmed integer and trailing dots to interpolate.
+
+        double bestProgress = -1.0;
+        int searchPos = 0;
+
+        // Match either a number (anchor) or a lone dot (sub-step)
+        QRegularExpression re(R"((\d+)(\.*)|(\.+))");
+        auto it = re.globalMatch(buffer, searchPos);
+
+        int lastAnchor = -1;   // last integer we saw (0-100)
+        int trailingDots = 0;  // dots after the last integer
+
+        while (it.hasNext()) {
+            auto match = it.next();
+            if (!match.captured(1).isEmpty()) {
+                // It's a number (possibly followed by some dots in the same match)
+                lastAnchor = match.captured(1).toInt();
+                trailingDots = match.captured(2).length();
+            } else {
+                // It's a standalone dot group (shouldn't happen often, but handle it)
+                trailingDots += match.captured(3).length();
+            }
+
+            if (lastAnchor >= 0) {
+                // Each segment between integers has 3 dots → each dot = 1/3 of a 10-unit step
+                // But clamp dots to max 3 to avoid overshooting the next anchor
+                int dots = qMin(trailingDots, 3);
+                double interpolated = lastAnchor + (dots / 3.0) * 10.0;
+                interpolated = qMin(interpolated, 100.0);
+
+                // Map 0-100 → 40-90%
+                double mapped = 40.0 + (interpolated / 100.0) * 59.0;
+                bestProgress = mapped;
+            }
+        }
+
+        if (bestProgress >= 0.0)
+            setOrthoProgress(bestProgress, "Building Overviews...");
+    });
+
     connect(proc, &QProcess::readyReadStandardError, this, [proc]()
     {
         qWarning() << "[gdaladdo]" << proc->readAllStandardError();
@@ -255,7 +352,7 @@ bool OrthomosaicBackend::stepBuildOverviews()
             return;
         }
 
-        setOrthoProgress(70.0, "Overviews built");
+        setOrthoProgress(90.0, "Overviews built");
 
         // IMPORTANT: reopen dataset so overviews are visible
         if (warped_dataset_)

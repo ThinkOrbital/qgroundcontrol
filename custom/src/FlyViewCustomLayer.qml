@@ -375,10 +375,6 @@ Item {
         }
     }     
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/think-orbital
     QGCGroupBox {
         id: detectorDropdown
         anchors.left: uavDropdown.right

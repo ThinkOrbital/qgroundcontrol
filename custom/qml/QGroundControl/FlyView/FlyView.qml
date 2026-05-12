@@ -73,119 +73,6 @@ Item {
         anchors.fill:       parent
 
         // Tile math functions — accessible by everything in mapHolder scope
-        function tile2lat(y, z) {
-            var n = Math.PI - 2 * Math.PI * y / Math.pow(2, z)
-            return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))
-        }
-
-        function tile2lon(x, z) {
-            return x / Math.pow(2, z) * 360 - 180
-        }
-
-        function lon2tileX(lon, z) {
-            console.log("z:", z, "lon:", lon)
-            return Math.floor((lon + 180) / 360 * Math.pow(2, z))
-        }
-
-        function lat2tileY(lat, z) {
-            console.log("z:", z, "lat:", lat)
-            var rad = lat * Math.PI / 180
-            console.log("rad:", rad)
-            return Math.floor(
-                (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2
-                * Math.pow(2, z)
-            )
-        }
-
-        function updateTiles() {
-
-            if (!ortho || !ortho.orthoReady)
-                return
-
-            z = Math.floor(mapControl.zoomLevel)
-
-            //zoom guard
-            if (z < 16 || z > 22)
-                return
-
-            if (!mapControl.visibleRegion)
-                return
-
-            console.log("visibleRegion:", mapControl.visibleRegion)
-            console.log("boundingGeoRectangle:", mapControl.visibleRegion ? mapControl.visibleRegion.boundingGeoRectangle() : "null")
-
-            let rect = mapControl.visibleRegion.boundingGeoRectangle()
-
-            let tx0 = lon2tileX(rect.topLeft.longitude, z)
-            let tx1 = lon2tileX(rect.bottomRight.longitude, z)
-            let ty0 = lat2tileY(rect.topLeft.latitude, z)
-            let ty1 = lat2tileY(rect.bottomRight.latitude, z)
-
-            console.log("raw tile bounds:", 
-                        "tx", tx0, tx1,
-                        "ty", ty0, ty1)
-
-            let minX = Math.min(tx0, tx1)
-            let maxX = Math.max(tx0, tx1)
-            let minY = Math.min(ty0, ty1)
-            let maxY = Math.max(ty0, ty1)
-
-            console.log("tile bounds:",
-                "X:", minX, maxX,
-                "Y:", minY, maxY)
-
-            console.log("zoom:", mapControl.zoomLevel)
-            console.log("center:", mapControl.center)
-            console.log("width/height:", mapControl.width, mapControl.height)
-
-            if ((maxX - minX) * (maxY - minY) > 100)
-                return
-
-            tileModel.clear()
-
-            console.log("ortho tile url is: ", ortho.orthoTileUrl)
-            console.log("ortho object:", ortho)
-
-            for (let x = minX; x <= maxX; x++) {
-                for (let y = minY; y <= maxY; y++) {
-                    tileModel.append({
-                        tileId: z + "_" + x + "_" + y,
-                        tileX: x,
-                        tileY: y,
-                        tileZ: z,
-                        url: ortho.orthoTileUrl
-                                .replace("{z}", z)
-                                .replace("{x}", x)
-                                .replace("{y}", y)
-                    })
-                }
-            }
-            console.log("tiles count:", tileModel.count)
-        }
-
-        ListModel {
-            id: tileModel
-        }
-
-        //orthomosiac zoom and map movement
-        Connections {
-            target: mapControl
-
-            function onCenterChanged() { mapHolder.updateTiles() }
-            function onZoomLevelChanged() { mapHolder.updateTiles() }
-        }
-
-
-        Connections {
-            target: typeof ortho !== "undefined" ? ortho : null
-
-            function onOrthoReadyChanged() {
-                console.log("Ortho ready signal fired")
-                if (ortho && ortho.orthoReady) {
-                    mapHolder.updateTiles()
-                }
-            }
-        }
 
         FlyViewMap {
             id:                     mapControl
@@ -201,28 +88,27 @@ Item {
             property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
             property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
 
-    
-
             property int tileSize: 256
 
-            MapItemView {
-                model: tileModel
-                delegate: MapQuickItem {
-                    objectName: tileId
-                    coordinate: QtPositioning.coordinate(
-                        mapHolder.tile2lat(tileY, tileZ),
-                        mapHolder.tile2lon(tileX, tileZ)
-                    )
-                    anchorPoint: Qt.point(0, 0)
-                    sourceItem: Image {
-                        source:      model.url
-                        width:       256
-                        height:      256
-                        cache:       false
-                        asynchronous: true
-                        onStatusChanged: {
-                            if (status === Image.Error)   visible = false
-                            if (status === Image.Ready)   console.log("Tile loaded:", source)
+            Connections {
+                target: typeof ortho !== "undefined" ? ortho : null
+
+                function onOrthoReadyChanged() {
+                    if (ortho.orthoReady) {
+                        // Switch to the CustomURL provider (your ortho tiles)
+                        for (var i = 0; i < _mapControl.supportedMapTypes.length; i++) {
+                            if (_mapControl.supportedMapTypes[i].name === "CustomURL Custom") {
+                                _mapControl.activeMapType = _mapControl.supportedMapTypes[i]
+                                break
+                            }
+                        }
+                    } else {
+                        // Switch back to Bing (or whatever your default is)
+                        for (var i = 0; i < _mapControl.supportedMapTypes.length; i++) {
+                            if (_mapControl.supportedMapTypes[i].name === "Bing Satellite") {
+                                _mapControl.activeMapType = _mapControl.supportedMapTypes[i]
+                                break
+                            }
                         }
                     }
                 }
@@ -377,7 +263,6 @@ Item {
                 followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
             }
-        
         
         }
 
