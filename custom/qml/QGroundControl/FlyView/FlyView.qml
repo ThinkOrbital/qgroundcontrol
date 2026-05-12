@@ -12,6 +12,7 @@ import QGroundControl
 import QGroundControl.Controls
 import QGroundControl.FlyView
 import QGroundControl.FlightMap
+import QGroundControl.Toolbar
 import QGroundControl.Viewer3D
 
 Item {
@@ -230,7 +231,6 @@ Item {
             onMapDoubleClicked: (position) => {
                 const coord = toCoordinate(position, false)
                 backend.setCenterCoordinate(coord)
-                followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
             }
         
