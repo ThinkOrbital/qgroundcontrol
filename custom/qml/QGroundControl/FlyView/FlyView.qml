@@ -84,6 +84,8 @@ Item {
             property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
             property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
 
+            property int activeHandle: 0 // 0 = none, 1 = emitter, 2 = detector
+
             MapCircle {
                 center: backend.centerCoordinate
                 radius: backend.sepDistance / 2
@@ -138,7 +140,9 @@ Item {
                 coordinate: backend.emitterGoalCoord
                 anchorPoint.x: 10
                 anchorPoint.y: 10
+
                 sourceItem: Rectangle {
+                    id: emitterRect
                     width: 20
                     height: 20
                     color: "green"
@@ -152,6 +156,7 @@ Item {
                         font.pixelSize: 16
                     }
                 }
+
             }
 
             // --- Detector Goal ---
@@ -162,6 +167,7 @@ Item {
                 anchorPoint.x: 10
                 anchorPoint.y: 10
                 sourceItem: Rectangle {
+                    id: detectorRect
                     width: 20
                     height: 20
                     color: "green"
@@ -176,14 +182,72 @@ Item {
                     }
                 }
             }
-        
+
+            MouseArea {
+                anchors.fill: mapControl
+                acceptedButtons: Qt.LeftButton
+
+                onPressed: (mouse) => {
+                    var emitterScreen = mapControl.fromCoordinate(
+                        backend.emitterGoalCoord)
+
+                    var detectorScreen = mapControl.fromCoordinate(
+                        backend.detectorGoalCoord)
+
+                    var click = Qt.point(mouse.x, mouse.y)
+
+                    function dist(a, b) {
+                        var dx = a.x - b.x
+                        var dy = a.y - b.y
+                        return Math.sqrt(dx*dx + dy*dy)
+                    }
+
+                    var dEmitter = dist(click, emitterScreen)
+                    var dDetector = dist(click, detectorScreen)
+
+                    var hitRadius = 20  // pixels (tune to icon size)
+
+                    if (dEmitter < hitRadius && dEmitter < dDetector) {
+                        mapControl.activeHandle = 1
+                    } else if (dDetector < hitRadius) {
+                        mapControl.activeHandle = 2
+                    } else {
+                        mapControl.activeHandle = 0
+                    }
+                }
+
+                onPositionChanged: (mouse) => {
+
+                    if (mapControl.activeHandle === 0)
+                        return
+
+                    var coord = mapControl.toCoordinate(
+                        Qt.point(mouse.x, mouse.y),
+                        false)
+
+                    var bearing =
+                        backend.centerCoordinate.azimuthTo(coord)
+
+                    if (mapControl.activeHandle === 1)
+                        bearing += 180
+
+                    backend.bearing =
+                        ((bearing % 360) + 360) % 360
+                }
+
+                onReleased: {
+                    mapControl.activeHandle = 0
+                }
+            }
+                
             //Double click for circle
             onMapDoubleClicked: (position) => {
                 const coord = toCoordinate(position, false)
                 backend.setCenterCoordinate(coord)
                 followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
-            }        
+            }
+
         }
 
         FlyViewVideo {
@@ -267,8 +331,7 @@ Item {
 
             onActiveChanged: {
                 if (active) {
-                    setSource("qrc:/qml/QGroundControl/Viewer3D/Models3D/Viewer3DModel.qml",
-)
+                    setSource("qrc:/qml/QGroundControl/Viewer3D/Models3D/Viewer3DModel.qml",)
                 }
             }
         }

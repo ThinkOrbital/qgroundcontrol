@@ -231,21 +231,6 @@ Item {
                     fact: _goalAltitudeFact
                 }
 
-                // -------- BEARING --------
-                QGCLabel {
-                    text: "UAV-Target Bearing (0-360):"
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: false
-                }
-                FactTextField {
-                    Layout.fillWidth: true
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
-                    unitsLabel: "deg"
-                    showUnits: true
-                    fact: _bearingFact
-                }
-
                 // -------- DETECTOR POS OFFSET --------
                 QGCLabel {
                     text: "Detector-Target Separation:"
