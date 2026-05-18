@@ -29,6 +29,10 @@ static const uint8_t kEmptyPng[] = {
     0x42,0x60,0x82
 };
 
+struct TileBounds {
+    double north, south, west, east;
+};
+
 class OrthomosaicBackend : public QObject
 {
     Q_OBJECT
@@ -42,6 +46,8 @@ class OrthomosaicBackend : public QObject
     Q_PROPERTY(bool orthoProcessing READ orthoProcessing NOTIFY orthoProcessingChanged)
 
 public:
+    using Tile = std::tuple<int,int,int>; // x, y, z
+
     explicit OrthomosaicBackend(QObject* parent = nullptr);
 
     double orthoProgress() const {return this->ortho_progress_; }
@@ -72,10 +78,13 @@ private:
     //Orthomosaic Steps
     bool stepValidateAndOpen(const QString& path); // ~0-5%
     bool stepReprojectToWebMercator(); // ~5-40%
-    bool stepBuildOverviews(); // ~40-70%
-    bool stepConvertToCOG(); // ~70-85%
-    bool stepStartTileServer(); // ~85-100%
+    bool stepBuildOverviews(); // ~40-99%
+    bool stepStartTileServer(); // ~99-100%
     void sendEmptyTile(QTcpSocket* socket);
+
+    // TileBounds tileToLatLon(int x, int y, int z);
+    // std::pair<int,int> latLonToTile(double lat, double lon, int z);
+    // std::vector<Tile> visibleTiles(double north, double south, double west,  double east, int z);
 
     void handleTileRequest(QTcpSocket* socket, const QByteArray& request);
     QByteArray renderTile(int32_t z, int32_t x, int32_t y);

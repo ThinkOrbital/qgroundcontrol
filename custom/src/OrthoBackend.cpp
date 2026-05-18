@@ -153,23 +153,6 @@ bool OrthomosaicBackend::stepReprojectToWebMercator()
         qDebug() << "gdalwarp process started successfully";
     });
 
-    /*connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
-        QString out = proc->readAllStandardOutput();
-        qDebug() << "[gdalwarp stdout]" << out;
-        
-        // gdalwarp outputs "0...10...20...30...40...50...60...70...80...90...100"
-        QRegularExpression re(R"((\d+)\.\.\.)");
-        auto it = re.globalMatch(out);
-        int lastVal = -1;
-        while (it.hasNext())
-            lastVal = it.next().captured(1).toInt();
-
-        if (lastVal >= 0) {
-            // Map gdalwarp 0-100 into our 5-40% progress range
-            double mapped = 5.0 + (lastVal / 100.0) * 35.0;
-            setOrthoProgress(mapped, "Warping to EPSG:3857...");
-        }
-    });*/
 
     connect(proc, &QProcess::readyReadStandardOutput, proc, [this, proc]() {
         static QString buffer;
@@ -627,10 +610,50 @@ void OrthomosaicBackend::handleTileRequest(QTcpSocket* socket,
     socket->flush();
 }
 
+// TileBounds OrthomosaicBackend::tileToLatLon(int x, int y, int z) {
+//     double n = std::pow(2.0, z);
+//     double west  = (x / n) * 360.0 - 180.0;
+//     double east  = ((x + 1) / n) * 360.0 - 180.0;
+//     double north = std::atan(std::sinh(M_PI * (1.0 - 2.0 * y / n)))       * 180.0 / M_PI;
+//     double south = std::atan(std::sinh(M_PI * (1.0 - 2.0 * (y + 1) / n))) * 180.0 / M_PI;
+//     return { north, south, west, east };
+// }
 
+// std::pair<int,int> OrthomosaicBackend::latLonToTile(double lat, double lon, int z) {
+//     lat = std::max(-85.051129, std::min(85.051129, lat));
+//     lon = std::max(-180.0,     std::min(179.9999,  lon));
+
+//     double n   = std::pow(2.0, z);
+//     int    tx  = static_cast<int>((lon + 180.0) / 360.0 * n);
+//     double lr  = lat * M_PI / 180.0;
+//     int    ty  = static_cast<int>((1.0 - std::log(std::tan(lr) + 1.0 / std::cos(lr)) / M_PI) / 2.0 * n);
+//     return { tx, ty };
+// }
+
+// std::vector<Tile> OrthomosaicBackend::visibleTiles(double north, double south,
+//                                double west,  double east, int z) {
+//     auto [xMin, yMax] = latLonToTile(south, west, z);
+//     auto [xMax, yMin] = latLonToTile(north, east, z);
+
+//     int maxIndex = static_cast<int>(std::pow(2, z)) - 1;
+
+//     xMin = std::max(0, xMin);
+//     yMin = std::max(0, yMin);
+//     xMax = std::min(maxIndex, xMax);
+//     yMax = std::min(maxIndex, yMax);
+
+//     std::vector<Tile> tiles;
+//     for (int x = xMin; x <= xMax; ++x)
+//         for (int y = yMin; y <= yMax; ++y)
+//             tiles.emplace_back(x, y, z);
+
+//     return tiles;
+// }
 
 QByteArray OrthomosaicBackend::renderTile(int z, int x, int y)
 {
+
+    qDebug() << "INSIDE RENDERTILE";
     const QString key = QString("%1/%2/%3").arg(z).arg(x).arg(y);
 
     {
@@ -652,7 +675,7 @@ QByteArray OrthomosaicBackend::renderTile(int z, int x, int y)
 QByteArray OrthomosaicBackend::renderTileFromGDAL(int z, int x, int y)
 {
 
-    
+    qDebug() << "INSIDE RENDERTILEFROMGDAL";
     if (!this->warped_dataset_)
     {
         qWarning() << "Warped dataset does not exist!";
