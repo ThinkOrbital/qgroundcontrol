@@ -84,8 +84,6 @@ Item {
             property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
             property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
 
-            property int activeHandle: 0 // 0 = none, 1 = emitter, 2 = detector
-
             MapCircle {
                 center: backend.centerCoordinate
                 radius: backend.sepDistance / 2
@@ -187,6 +185,9 @@ Item {
                 anchors.fill: mapControl
                 acceptedButtons: Qt.LeftButton
 
+                property bool dragging: false
+                property int activeHandle: 0
+
                 onPressed: (mouse) => {
                     var emitterScreen = mapControl.fromCoordinate(
                         backend.emitterGoalCoord)
@@ -208,18 +209,28 @@ Item {
                     var hitRadius = 20  // pixels (tune to icon size)
 
                     if (dEmitter < hitRadius && dEmitter < dDetector) {
-                        mapControl.activeHandle = 1
+                        activeHandle = 1
+                        dragging = true
+                        mouse.accepted = true
+                        return
                     } else if (dDetector < hitRadius) {
-                        mapControl.activeHandle = 2
+                        activeHandle = 2
+                        dragging = true
+                        mouse.accepted = true
+                        return
                     } else {
-                        mapControl.activeHandle = 0
+                        activeHandle = 0
+                        dragging = false
+                        mouse.accepted = false
                     }
                 }
 
                 onPositionChanged: (mouse) => {
 
-                    if (mapControl.activeHandle === 0)
+                    if (!dragging)
                         return
+
+                    mouse.accepted = true
 
                     var coord = mapControl.toCoordinate(
                         Qt.point(mouse.x, mouse.y),
@@ -228,7 +239,7 @@ Item {
                     var bearing =
                         backend.centerCoordinate.azimuthTo(coord)
 
-                    if (mapControl.activeHandle === 1)
+                    if (activeHandle === 1)
                         bearing += 180
 
                     backend.bearing =
@@ -236,7 +247,7 @@ Item {
                 }
 
                 onReleased: {
-                    mapControl.activeHandle = 0
+                    activeHandle = 0
                 }
             }
                 
