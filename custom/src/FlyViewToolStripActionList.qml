@@ -14,6 +14,14 @@ ToolStripActionList {
         GuidedActionLand { },
         GuidedActionRTL { },
         GuidedActionPause { },
-        FlyViewAdditionalActionsButton { }
+        FlyViewAdditionalActionsButton { },
+
+        ToolStripAction {
+            text:       backend.nudgeMode === 0 ? qsTr("Nudge\nAbs") : qsTr("Nudge\nRel")
+            iconSource: "/res/gear-white.svg"
+            visible:    true
+            enabled:    true
+            onTriggered: backend.toggleNudgeMode()
+        }
     ]
 }

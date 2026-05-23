@@ -1211,3 +1211,19 @@ void BackendController::setFlightStatus(const QString flightstatus)
         emit flightStatusChanged();
     }
 }
+
+void BackendController::setNudgeMode(const uint8_t nudgeMode)
+{
+    if(this->nudge_mode_ != nudgeMode)
+    {
+        this->nudge_mode_ = nudgeMode;
+        emit nudgeModeChanged(this->nudge_mode_);
+    }
+
+}
+
+void  BackendController::toggleNudgeMode()
+{
+    qDebug() << "Toggle Nudge Mode Pressed";
+    setNudgeMode(this->nudge_mode_ == 0 ? 1 : 0);
+}
