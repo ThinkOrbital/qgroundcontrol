@@ -138,7 +138,9 @@ Item {
                 coordinate: backend.emitterGoalCoord
                 anchorPoint.x: 10
                 anchorPoint.y: 10
+
                 sourceItem: Rectangle {
+                    id: emitterRect
                     width: 20
                     height: 20
                     color: "green"
@@ -152,6 +154,7 @@ Item {
                         font.pixelSize: 16
                     }
                 }
+
             }
 
             // --- Detector Goal ---
@@ -162,6 +165,7 @@ Item {
                 anchorPoint.x: 10
                 anchorPoint.y: 10
                 sourceItem: Rectangle {
+                    id: detectorRect
                     width: 20
                     height: 20
                     color: "green"
@@ -176,14 +180,85 @@ Item {
                     }
                 }
             }
-        
+
+            MouseArea {
+                anchors.fill: mapControl
+                acceptedButtons: Qt.LeftButton
+
+                property bool dragging: false
+                property int activeHandle: 0
+
+                onPressed: (mouse) => {
+                    var emitterScreen = mapControl.fromCoordinate(
+                        backend.emitterGoalCoord)
+
+                    var detectorScreen = mapControl.fromCoordinate(
+                        backend.detectorGoalCoord)
+
+                    var click = Qt.point(mouse.x, mouse.y)
+
+                    function dist(a, b) {
+                        var dx = a.x - b.x
+                        var dy = a.y - b.y
+                        return Math.sqrt(dx*dx + dy*dy)
+                    }
+
+                    var dEmitter = dist(click, emitterScreen)
+                    var dDetector = dist(click, detectorScreen)
+
+                    var hitRadius = 20  // pixels (tune to icon size)
+
+                    if (dEmitter < hitRadius && dEmitter < dDetector) {
+                        activeHandle = 1
+                        dragging = true
+                        mouse.accepted = true
+                        return
+                    } else if (dDetector < hitRadius) {
+                        activeHandle = 2
+                        dragging = true
+                        mouse.accepted = true
+                        return
+                    } else {
+                        activeHandle = 0
+                        dragging = false
+                        mouse.accepted = false
+                    }
+                }
+
+                onPositionChanged: (mouse) => {
+
+                    if (!dragging)
+                        return
+
+                    mouse.accepted = true
+
+                    var coord = mapControl.toCoordinate(
+                        Qt.point(mouse.x, mouse.y),
+                        false)
+
+                    var bearing =
+                        backend.centerCoordinate.azimuthTo(coord)
+
+                    if (activeHandle === 1)
+                        bearing += 180
+
+                    backend.bearing =
+                        ((bearing % 360) + 360) % 360
+                }
+
+                onReleased: {
+                    activeHandle = 0
+                }
+            }
+                
             //Double click for circle
             onMapDoubleClicked: (position) => {
                 const coord = toCoordinate(position, false)
                 backend.setCenterCoordinate(coord)
                 followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
-            }        
+            }
+
         }
 
         FlyViewVideo {
@@ -267,8 +342,7 @@ Item {
 
             onActiveChanged: {
                 if (active) {
-                    setSource("qrc:/qml/QGroundControl/Viewer3D/Models3D/Viewer3DModel.qml",
-)
+                    setSource("qrc:/qml/QGroundControl/Viewer3D/Models3D/Viewer3DModel.qml",)
                 }
             }
         }
