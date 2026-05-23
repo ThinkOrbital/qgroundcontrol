@@ -115,7 +115,6 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
 
-
     Q_PROPERTY(int32_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
     Q_PROPERTY(uint8_t numImages READ numImages WRITE setNumImages NOTIFY numImagesChanged)
@@ -139,6 +138,8 @@ class BackendController : public QObject {
     Q_PROPERTY(QString detStatus READ detStatus NOTIFY detStatusChanged)
 
     Q_PROPERTY(QString flightStatus READ flightStatus WRITE setFlightStatus NOTIFY flightStatusChanged)
+
+    Q_PROPERTY(uint8_t nudgeMode READ nudgeMode WRITE setNudgeMode NOTIFY nudgeModeChanged)
 
 
 public:
@@ -276,6 +277,8 @@ public:
     uint8_t detBatPerc() const {return this->det_battery_charge_; }
 
     QString flightStatus() const {return this->flight_status_; }
+
+    uint8_t nudgeMode() const {return this->nudge_mode_; }
     
     //enable/disable buttons
     Q_INVOKABLE void setStartMissionButtonEn(const bool enabled);
@@ -323,6 +326,9 @@ public:
     Q_INVOKABLE void setDetectorConnected(const bool detectorConn);
 
     Q_INVOKABLE void setFlightStatus(const QString flightstatus);
+
+    Q_INVOKABLE void setNudgeMode(const uint8_t nudgeMode);
+    Q_INVOKABLE void toggleNudgeMode();
 
 signals:
     void scanMissionModeChanged();
@@ -387,6 +393,8 @@ signals:
     void detStatusChanged();
 
     void flightStatusChanged();
+    void nudgeModeChanged(uint8_t nudgeMode);
+
 private slots:
     void _mavlinkMessageReceived(LinkInterface* link, mavlink_message_t message);
     void _vehicleAdded(Vehicle* vehicle);
@@ -398,9 +406,6 @@ private:
     void sendStartScan(StartScan state);
     void send_ack(AckType type, uint8_t src_id);
 
-
-
-    // sd::unique_ptr<DroneControl> ctrl;
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
     double sep_distance_ { 10.0 };
     double bearing_ { 0.0 };
@@ -440,6 +445,7 @@ private:
     QString  det_status_ {};
     QString  file_name_ {"image"};
     uint8_t  num_images_{1};
+    uint8_t  nudge_mode_ {0};
 
     //emitter settings
     uint32_t em_test_duration_ms_ {5000};

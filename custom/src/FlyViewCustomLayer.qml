@@ -52,6 +52,9 @@ Item {
         : false
     property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
 
+    // Nudge mode: 0 = Absolute (N/E/S/W), 1 = Relative (Fwd/Back/L/R) vs active vehicle heading
+    property int nudgeMode: 0
+
     property var  _customSettings:  QGroundControl.corePlugin.customSettings
     property var _sepDistFact: _customSettings.separationDistance
     property var _bearingFact: _customSettings.bearing
@@ -677,6 +680,17 @@ Item {
                         this)
                 }
 
+                // Absolute mode: pass through.  Relative mode: offset by active vehicle heading.
+                function bearingFor(absoluteDeg) {
+                    console.log("nudge mode = ", backend.nudgeMode)
+                    if (backend.nudgeMode === 0) {
+                        return absoluteDeg
+                    }
+                    var hdg = _activeVehicle ? _activeVehicle.heading.rawValue : 0
+                    return (absoluteDeg + hdg) % 360
+                }
+
+
                 // NORTH
                 Item {
                     Layout.row: 0; Layout.column: 1
@@ -696,8 +710,13 @@ Item {
                             c.stroke()
                         }
                     }
-                    Text { anchors.centerIn: parent; text: "N"; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(0, parseFloat(nudgeInput.text)) }
+
+                    Text { 
+                        anchors.centerIn: parent
+                        text: backend.nudgeMode === 0 ? "N" : "F"
+                        font.bold: true 
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(parent.parent.bearingFor(0), parseFloat(nudgeInput.text)) }
                 }
 
                 // WEST
@@ -719,8 +738,12 @@ Item {
                             c.stroke()
                         }
                     }
-                    Text { anchors.centerIn: parent; text: "W"; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(270, parseFloat(nudgeInput.text)) }
+                    Text { 
+                        anchors.centerIn: parent
+                        text: backend.nudgeMode === 0 ? "W" : "L"
+                        font.bold: true 
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(parent.parent.bearingFor(270), parseFloat(nudgeInput.text)) }
                 }
 
                 // CENTER
@@ -756,8 +779,11 @@ Item {
                             c.stroke()
                         }
                     }
-                    Text { anchors.centerIn: parent; text: "E"; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(90, parseFloat(nudgeInput.text)) }
+                    Text { 
+                        anchors.centerIn: parent
+                        text: backend.nudgeMode === 0 ? "E" : "R"
+                        font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(parent.parent.bearingFor(90), parseFloat(nudgeInput.text)) }
                 }
 
                 // SOUTH
@@ -779,8 +805,12 @@ Item {
                             c.stroke()
                         }
                     }
-                    Text { anchors.centerIn: parent; text: "S"; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(180, parseFloat(nudgeInput.text)) }
+                    Text { 
+                        anchors.centerIn: parent
+                        text: backend.nudgeMode === 0 ? "S" : "B"
+                        font.bold: true
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: backend.nudge(parent.parent.bearingFor(180), parseFloat(nudgeInput.text)) }
                 }
             }   
             // ================= MISSION BUTTONS =================
