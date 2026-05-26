@@ -121,19 +121,19 @@ Item {
                 border.width: 2
                 border.color: "#00FF00"
             }
-
+                
             MapCircle {
-                center: mapControl._vehicleEmitter ? mapControl._vehicleEmitter.coordinate : QtPositioning.coordinate()
+                visible: _vehicleEmitter !== null
+                center: backend.emitterCurrentPos
                 radius: 30
-                //color: "#4000FF00"
                 border.width: 2
                 border.color: "#e1ff00"
             }
 
             MapCircle {
-                center: mapControl._vehicleEmitter ? mapControl._vehicleEmitter.coordinate : QtPositioning.coordinate()
+                visible: _vehicleEmitter !== null
+                center: backend.emitterCurrentPos
                 radius: 50
-                //color: "#4000FF00"
                 border.width: 2
                 border.color: "#00FF00"
             }
@@ -206,55 +206,6 @@ Item {
                     }
                 }
             }
-
-        
-            // --- Emitter  Position ---
-            MapQuickItem {
-                id: emitterPosition
-                objectName: "emitterPosition"
-                visible: mapControl._vehicleEmitter !== null
-                coordinate: mapControl._vehicleEmitter ? mapControl._vehicleEmitter.coordinate : QtPositioning.coordinate()
-                anchorPoint.x: 10
-                anchorPoint.y: 10
-                sourceItem: Rectangle {
-                    width: 20
-                    height: 20
-                    color: "blue"
-                    radius: width / 2
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "EP"
-                        color: "white"
-                        font.bold: true
-                        font.pixelSize: 16
-                    }
-                }
-            }
-
-            // --- Detector  Position ---
-            MapQuickItem {
-                id: detectorPosition
-                objectName: "detectorPosition"
-                visible: mapControl._vehicleDetector !== null
-                coordinate: mapControl._vehicleDetector ? mapControl._vehicleDetector.coordinate : QtPositioning.coordinate()
-                anchorPoint.x: 10
-                anchorPoint.y: 10
-                sourceItem: Rectangle {
-                    width: 20
-                    height: 20
-                    color: "blue"
-                    radius: width / 2
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "DP"
-                        color: "white"
-                        font.bold: true
-                        font.pixelSize: 16
-                    }
-                }
-            }
         
             //Double click for circle
             onMapDoubleClicked: (position) => {
@@ -262,8 +213,7 @@ Item {
                 backend.setCenterCoordinate(coord)
                 followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
-            }
-        
+            }        
         }
 
         FlyViewVideo {
