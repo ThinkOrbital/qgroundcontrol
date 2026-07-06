@@ -431,6 +431,7 @@ void BackendController::processTelemetryUpdates()
                             {
                                 str_flight_status = "Waiting for user to press start mission button.";
                                 this->setStartMissionButtonEn(true);
+                                
                             }
 
                             if(!targMsgSent_)
@@ -899,15 +900,11 @@ void BackendController::sendGoal()
     qDebug() << "Send Goal Button Pressed!";
 
      // fill out the message
-    double lat_int, lat_frac, lon_int, lon_frac;
-    lat_frac = modf(centerCoordinate().latitude(), &lat_int);
-    lon_frac = modf(centerCoordinate().longitude(), &lon_int);
 
     mavlink_cooperative_target_definition_t msg = {};
-    msg.lat_int      = static_cast<int32_t>(centerCoordinate().latitude());
-    msg.lon_int      = static_cast<int32_t>(centerCoordinate().longitude());
-    msg.lat_frac     = static_cast<int32_t>(lat_frac * 1e8);
-    msg.lon_frac     = static_cast<int32_t>(lon_frac * 1e8);
+    msg.center_lat      = static_cast<int32_t>(centerCoordinate().latitude() * 1e7);
+    msg.center_lon      = static_cast<int32_t>(centerCoordinate().longitude()* 1e7);
+    //ToDo: Add linear scan start + end lat/lon
     msg.altitude     = static_cast<float>(this->altitude_);
     msg.separation   = this->sep_distance_;
     msg.angle        = static_cast<uint32_t>(bearing_);
@@ -915,6 +912,7 @@ void BackendController::sendGoal()
     msg.emAltOffset  = this->emAltOffset_;
     msg.flightAlt    = this->flight_alt_;
     msg.flightVel    = this->flight_vel_;
+    //ToDo: Add percent overlap
 
     MultiVehicleManager* mgr = MultiVehicleManager::instance();
     for (int i = 0; i < mgr->vehicles()->count(); i++) {
