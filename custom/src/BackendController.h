@@ -16,7 +16,7 @@
 #include "mavlink.h"
 #include "MAVLinkProtocol.h"
 
-enum class FlightState{init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, test};
+enum class FlightState{init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, linear_scan, test, no_conn};
 
 enum class DetStatus : uint8_t {
      no_connection = 0,
@@ -52,12 +52,13 @@ enum class AckType : uint8_t {
         ack_coop_align = 4,
         ack_coop_descend = 5,
         ack_coop_scan = 6,
-        ack_coop_rtl = 7,
-        ack_coop_opin = 8,
-        ack_start_start = 9,
-        ack_start_resume = 10,
-        ack_start_end = 11,
-        ack_scan = 12
+        ack_coop_linear_scan = 7,
+        ack_coop_rtl = 8,
+        ack_coop_opin = 9,
+        ack_start_start = 10,
+        ack_start_resume = 11,
+        ack_start_end = 12,
+        ack_scan = 13
 };
 
 struct TelemetryStruct {

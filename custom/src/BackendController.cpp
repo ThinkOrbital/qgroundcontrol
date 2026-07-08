@@ -914,6 +914,15 @@ void BackendController::sendGoal()
     msg.flightVel    = this->flight_vel_;
     //ToDo: Add percent overlap
 
+    //Temporary hard code of start + end lat/lon
+    QGeoCoordinate startCoord = center_coordinate_.atDistanceAndAzimuth(5.0, bearing_ + 90);
+    QGeoCoordinate endCoord = center_coordinate_.atDistanceAndAzimuth(5.0, bearing_ - 90);
+
+    msg.start_lat   = static_cast<int32_t>(startCoord.latitude() * 1e7);
+    msg.start_lon   = static_cast<int32_t>(startCoord.longitude() * 1e7);
+    msg.end_lat    = static_cast<int32_t>(endCoord.latitude() * 1e7);
+    msg.end_lon     = static_cast<int32_t>(endCoord.longitude() * 1e7);
+
     MultiVehicleManager* mgr = MultiVehicleManager::instance();
     for (int i = 0; i < mgr->vehicles()->count(); i++) {
         
