@@ -87,6 +87,9 @@ class BackendController : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool scanMissionMode READ scanMissionMode WRITE setScanMissionMode NOTIFY scanMissionModeChanged)
     Q_PROPERTY(QGeoCoordinate centerCoordinate READ centerCoordinate WRITE setCenterCoordinate NOTIFY centerCoordinateChanged)
+    Q_PROPERTY(QGeoCoordinate startCoordinate READ startCoordinate WRITE setStartCoordinate NOTIFY startCoordinateChanged)
+    Q_PROPERTY(QGeoCoordinate endCoordinate READ endCoordinate WRITE setEndCoordinate NOTIFY endCoordinateChanged)
+    Q_PROPERTY(uint8_t overlap READ overlap WRITE setOverlap NOTIFY overlapChanged)
     Q_PROPERTY(double sepDistance READ sepDistance WRITE setSepDistance NOTIFY sepDistanceChanged)
     Q_PROPERTY(double bearing READ bearing WRITE setBearing NOTIFY bearingChanged)
     Q_PROPERTY(double altitude READ altitude WRITE setAltitude NOTIFY altitudeChanged)
@@ -146,6 +149,9 @@ public:
     explicit BackendController(QObject *parent = nullptr);
     bool scanMissionMode() const { return scanMissionMode_; }
     QGeoCoordinate centerCoordinate() const { return center_coordinate_; }
+    QGeoCoordinate startCoordinate() const { return start_coordinate_; }
+    QGeoCoordinate endCoordinate() const { return end_coordinate_; }
+    uint8_t overlap() const { return overlap_; }
     double sepDistance() const { return sep_distance_; }
     double bearing() const { return bearing_; }
     double altitude() const { return altitude_; }
@@ -292,6 +298,9 @@ public:
     Q_INVOKABLE void nudge(const double azimuth, const double distance);
     Q_INVOKABLE void setScanMissionMode(const bool mode);
     Q_INVOKABLE void setCenterCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void setStartCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void setEndCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void setOverlap(const uint8_t overlap);
     Q_INVOKABLE void setSepDistance(const double distance);
     Q_INVOKABLE void setBearing(const double bearing);
     Q_INVOKABLE void setAltitude(const double altitude);
@@ -300,6 +309,7 @@ public:
     Q_INVOKABLE void setFlightAlt(const double flightAlt);
     Q_INVOKABLE void setFlightVel(const double flightVel);
     Q_INVOKABLE void sendCenterGoal();
+    Q_INVOKABLE void sendLinearScanGoal();
     Q_INVOKABLE void startMission();
     Q_INVOKABLE void resumeMission();
     Q_INVOKABLE void endMission();
@@ -335,6 +345,9 @@ signals:
     void connectionResult(bool success);
     void onConnectionStateChange(bool connected, uint8_t sysid);
     void centerCoordinateChanged();
+    void startCoordinateChanged();
+    void overlapChanged();
+    void endCoordinateChanged();
     void sepDistanceChanged();
     void bearingChanged();
     void altitudeChanged();
@@ -404,8 +417,12 @@ private:
     void sendStartMission(StartMission state);
     void sendStartScan(StartScan state);
     void send_ack(AckType type, uint8_t src_id);
+    void sendGoal(mavlink_cooperative_target_definition_t& msg);
 
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
+    QGeoCoordinate start_coordinate_;
+    QGeoCoordinate end_coordinate_;
+    uint8_t overlap_ {0};
     double sep_distance_ { 10.0 };
     double bearing_ { 0.0 };
     double altitude_ { 2.0 };

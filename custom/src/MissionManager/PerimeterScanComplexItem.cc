@@ -8,6 +8,7 @@
 #include "QGCLoggingCategory.h"
 #include "SettingsManager.h"
 #include "CustomPlugin.h"
+#include "BackendController.h"
 
 #include <QtCore/QJsonArray>
 
@@ -56,9 +57,18 @@ void PerimeterScanComplexItem::sendLinearScanGoal() {
     if (_corridorPolyline.count() != 2) {
         qWarning() << "*** sending goal only works with a 2 point line";
     }
-    
-    // BackendController* backendController = customPlugin ? customPlugin->backendController() : nullptr;
 
+    BackendController* backendController = customPlugin ? customPlugin->backendController() : nullptr;
+    if (backendController == nullptr) {
+        qWarning() << "*** backend is null";
+        return;
+    }
+
+    backendController->setStartCoordinate(_corridorPolyline.vertexCoordinate(0));
+    // For now, only send start and end. Intermediate points are ignored till the backend supports a linear scan path.
+    backendController->setEndCoordinate(_corridorPolyline.vertexCoordinate(_corridorPolyline.count() - 1));
+
+    backendController->sendLinearScanGoal();
 }
 
 /*---------------------------------------------------------------------------*/
