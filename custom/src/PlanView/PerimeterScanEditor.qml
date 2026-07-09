@@ -137,6 +137,7 @@ Rectangle {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
                 onClicked: missionItem.sendLinearScanGoal()
+                // TODO disable button using "dirty" syntax, if goal is sent gray it out. Ungray if params change.
                 // enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)

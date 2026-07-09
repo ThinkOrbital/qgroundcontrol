@@ -776,6 +776,30 @@ void BackendController::setCenterCoordinate(const QGeoCoordinate &coord)
     }
 }
 
+void BackendController::setStartCoordinate(const QGeoCoordinate &coord)
+{
+    if (start_coordinate_ != coord) {
+        start_coordinate_ = coord;
+        emit startCoordinateChanged();
+    }
+}
+
+void BackendController::setEndCoordinate(const QGeoCoordinate &coord)
+{
+    if (end_coordinate_ != coord) {
+        end_coordinate_ = coord;
+        emit endCoordinateChanged();
+    }
+}
+
+void BackendController::setOverlap(const uint8_t overlap)
+{
+    if (overlap_ != overlap) {
+        overlap_ = overlap;
+        emit overlapChanged();
+    }
+}
+
 void BackendController::setSepDistance(const double dist)
 {
     if (sep_distance_ != dist) {
@@ -897,47 +921,30 @@ void BackendController::setEndMissionButtonEn(const bool enabled)
 
 void BackendController::sendCenterGoal()
 {
-    qDebug() << "Send Goal Button Pressed!";
-
-     // fill out the message
-
+    qDebug() << "Sending center goal";
     mavlink_cooperative_target_definition_t msg = {};
-    msg.center_lat      = static_cast<int32_t>(centerCoordinate().latitude() * 1e7);
-    msg.center_lon      = static_cast<int32_t>(centerCoordinate().longitude()* 1e7);
-    //ToDo: Add linear scan start + end lat/lon
-    msg.altitude     = static_cast<float>(this->altitude_);
-    msg.separation   = this->sep_distance_;
-    msg.angle        = static_cast<uint32_t>(bearing_);
-    msg.detOffset    = this->detOffset_;
-    msg.emAltOffset  = this->emAltOffset_;
-    msg.flightAlt    = this->flight_alt_;
-    msg.flightVel    = this->flight_vel_;
-    //ToDo: Add percent overlap
+    msg.center_lat = static_cast<int32_t>(centerCoordinate().latitude() * 1e7);
+    msg.center_lon = static_cast<int32_t>(centerCoordinate().longitude()* 1e7);
+    msg.start_lat = 0;
+    msg.start_lon = 0;
+    msg.end_lat = 0;
+    msg.end_lon = 0;
+    msg.angle = static_cast<uint32_t>(bearing_);
+    sendGoal(msg);
+}
 
-    MultiVehicleManager* mgr = MultiVehicleManager::instance();
-    for (int i = 0; i < mgr->vehicles()->count(); i++) {
-        
-        Vehicle* vehicle = mgr->vehicles()->value<Vehicle*>(i);
-        if (!vehicle) continue;
-
-        SharedLinkInterfacePtr sharedLink = vehicle->vehicleLinkManager()->primaryLink().lock();
-        if (!sharedLink) continue;
-
-        mavlink_message_t mavMsg;
-        mavlink_msg_cooperative_target_definition_encode_chan(
-            static_cast<uint8_t>(MAVLinkProtocol::instance()->getSystemId()),
-            static_cast<uint8_t>(MAVLinkProtocol::getComponentId()),
-            sharedLink->mavlinkChannel(),
-            &mavMsg,
-            &msg
-        );
-        qDebug() << "Sending target message to system id " << vehicle->id();
-
-        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
-        this->sent_targ_msg_ = true;
-        this->targ_msg_time_ = std::chrono::steady_clock::now();
-        break; //send only one message out as it's going to both mavlink-routers on port 50882
-    }
+void BackendController::sendLinearScanGoal()
+{
+    qDebug() << "Sending linear scan goal";
+    mavlink_cooperative_target_definition_t msg = {};
+    msg.center_lat = 0;
+    msg.center_lon = 0;
+    msg.start_lat = static_cast<int32_t>(startCoordinate().latitude() * 1e7);
+    msg.start_lon = static_cast<int32_t>(startCoordinate().longitude() * 1e7);
+    msg.end_lat = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
+    msg.end_lon = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
+    msg.percOverlap = overlap_;
+    sendGoal(msg);
 }
 
 //To make sendStartScanMission robust, we need to make sure each UAV 
@@ -1226,4 +1233,38 @@ void  BackendController::toggleNudgeMode()
 {
     qDebug() << "Toggle Nudge Mode Pressed";
     setNudgeMode(this->nudge_mode_ == 0 ? 1 : 0);
+}
+
+void BackendController::sendGoal(mavlink_cooperative_target_definition_t& msg) {
+    msg.altitude     = static_cast<float>(this->altitude_);
+    msg.separation   = this->sep_distance_;
+    msg.detOffset    = this->detOffset_;
+    msg.emAltOffset  = this->emAltOffset_;
+    msg.flightAlt    = this->flight_alt_;
+    msg.flightVel    = this->flight_vel_;
+
+    MultiVehicleManager* mgr = MultiVehicleManager::instance();
+    for (int i = 0; i < mgr->vehicles()->count(); i++) {
+        
+        Vehicle* vehicle = mgr->vehicles()->value<Vehicle*>(i);
+        if (!vehicle) continue;
+
+        SharedLinkInterfacePtr sharedLink = vehicle->vehicleLinkManager()->primaryLink().lock();
+        if (!sharedLink) continue;
+
+        mavlink_message_t mavMsg;
+        mavlink_msg_cooperative_target_definition_encode_chan(
+            static_cast<uint8_t>(MAVLinkProtocol::instance()->getSystemId()),
+            static_cast<uint8_t>(MAVLinkProtocol::getComponentId()),
+            sharedLink->mavlinkChannel(),
+            &mavMsg,
+            &msg
+        );
+        qDebug() << "Sending target message to system id " << vehicle->id();
+
+        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        this->sent_targ_msg_ = true;
+        this->targ_msg_time_ = std::chrono::steady_clock::now();
+        break; //send only one message out as it's going to both mavlink-routers on port 50882
+    }
 }
