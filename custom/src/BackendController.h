@@ -289,7 +289,6 @@ public:
     Q_INVOKABLE void setEndMissionButtonEn(const bool enabled);
 
     //detect GUI changes and button presses
-    // Q_INVOKABLE void connectRequested(const QString &connStr);
     Q_INVOKABLE void nudge(const double azimuth, const double distance);
     Q_INVOKABLE void setScanMissionMode(const bool mode);
     Q_INVOKABLE void setCenterCoordinate(const QGeoCoordinate &coord);
@@ -300,7 +299,7 @@ public:
     Q_INVOKABLE void setEmAltOffset(const double offset);
     Q_INVOKABLE void setFlightAlt(const double flightAlt);
     Q_INVOKABLE void setFlightVel(const double flightVel);
-    Q_INVOKABLE void sendGoal();
+    Q_INVOKABLE void sendCenterGoal();
     Q_INVOKABLE void startMission();
     Q_INVOKABLE void resumeMission();
     Q_INVOKABLE void endMission();

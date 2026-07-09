@@ -116,6 +116,15 @@
     "maxValue": 3000.0,
     "decimalPlaces": 1,
     "label": "Detector XRay window"
+},
+{
+    "name": "overlap",
+    "shortDesc": "Percent overlap for linear scan imagery",
+    "type": "Int32",
+    "default": 25,
+    "min": 0,
+    "max": 99,
+    "label": "Percent Overlap"
 }
 ]
 }
