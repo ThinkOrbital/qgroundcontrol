@@ -6,6 +6,7 @@
 #include "FactMetaData.h"
 #include "MissionItem.h"
 #include "QGCMapPolygon.h"
+#include "QGCMapPolyline.h"
 #include "SettingsFact.h"
 
 class PlanMasterController;
@@ -26,17 +27,33 @@ public:
                                       bool flyView,
                                       const QString &kmlOrShpFile = QString());
 
-    Q_PROPERTY(QGCMapPolygon *perimeterPolygon READ perimeterPolygon CONSTANT)
+    // Q_PROPERTY(QGCMapPolygon *perimeterPolygon READ perimeterPolygon CONSTANT) // TODO remove
+    Q_PROPERTY(QGCMapPolygon *offsetPolygon READ offsetPolygon CONSTANT)
+    Q_PROPERTY(QGCMapPolyline *corridorPolyline READ corridorPolyline CONSTANT)
     Q_PROPERTY(Fact          *altitude         READ altitude         CONSTANT)
+    Q_PROPERTY(Fact          *sepDist         READ sepDist         CONSTANT)
+    Q_PROPERTY(Fact          *emAltOffset         READ emAltOffset         CONSTANT)
+    Q_PROPERTY(Fact          *detectorXrayWindow         READ detectorXrayWindow         CONSTANT)
+    Q_PROPERTY(Fact          *fileName         READ fileName         CONSTANT)
+    Q_PROPERTY(Fact          *numImages         READ numImages         CONSTANT)
+    Q_PROPERTY(Fact          *overlap         READ overlap         CONSTANT)
 
-    QGCMapPolygon *perimeterPolygon() { return &_perimeterPolygon; }
+    QGCMapPolyline *corridorPolyline(void) { return &_corridorPolyline; }
+    QGCMapPolygon *offsetPolygon() { return &_offsetPolygon; }
     Fact          *altitude()         { return &_altitudeFact; }
+    Fact          *sepDist()         { return &_sepDistFact; }
+    Fact          *emAltOffset()         { return &_emAltOffsetFact; }
+    Fact          *detectorXrayWindow()         { return &_detectorXrayWindowFact; }
+    Fact          *fileName()         { return &_fileNameFact; }
+    Fact          *numImages()         { return &_numImagesFact; }
+    Fact          *overlap()         { return &_overlapFact; }
 
     // These are called by the editor QML's polygon-capture callbacks.
-    Q_INVOKABLE void clearPolygon()                                              { _perimeterPolygon.clear(); }
-    Q_INVOKABLE void addPolygonCoordinate(const QGeoCoordinate &coordinate)     { _perimeterPolygon.appendVertex(coordinate); }
-    Q_INVOKABLE void adjustPolygonCoordinate(int vertexIndex,
-                                             const QGeoCoordinate &coordinate)  { _perimeterPolygon.adjustVertex(vertexIndex, coordinate); }
+    Q_INVOKABLE void clearPolyline()                                              { _corridorPolyline.clear(); }
+    Q_INVOKABLE void addPolylineCoordinate(const QGeoCoordinate &coordinate)     { _corridorPolyline.appendVertex(coordinate); }
+    Q_INVOKABLE void adjustPolylineCoordinate(int vertexIndex,
+                                             const QGeoCoordinate &coordinate)  { _corridorPolyline.adjustVertex(vertexIndex, coordinate); }
+    Q_INVOKABLE void sendLinearScanGoal();
 
     static constexpr const char *canonicalName           = "Perimeter Scan";
     static constexpr const char *jsonComplexItemTypeValue = "perimeterScan";
@@ -56,7 +73,7 @@ public:
     bool                dirty                     () const final { return _dirty; }
     bool                isSimpleItem              () const final { return false; }
     bool                isStandaloneCoordinate    () const final { return false; }
-    bool                specifiesCoordinate       () const final { return _perimeterPolygon.isValid(); }
+    bool                specifiesCoordinate       () const final { return _corridorPolyline.isValid(); }
     bool                specifiesAltitudeOnly     () const final { return false; }
     QString             commandDescription        () const final { return tr("Perimeter Scan"); }
     QString             commandName               () const final { return tr("Perimeter Scan"); }
@@ -84,16 +101,24 @@ public:
 
 private slots:
     void _setDirty();
-    void _polygonChanged();
+    void _polylineChanged();
+    void _rebuildOffsetPolygon();
 
 private:
     void _recalcScanDistance();
 
     int                          _sequenceNumber = 0;
     double                       _scanDistance   = 0.0;
-    QGCMapPolygon                _perimeterPolygon;
+    QGCMapPolygon                _offsetPolygon; // The polygon that shows where the drones will fly during the scan
+    QGCMapPolyline               _corridorPolyline;
     QMap<QString, FactMetaData *> _metaDataMap;
     SettingsFact                 _altitudeFact;
+    SettingsFact                 _sepDistFact;
+    SettingsFact                 _emAltOffsetFact;
+    SettingsFact                 _detectorXrayWindowFact;
+    SettingsFact                 _fileNameFact;
+    SettingsFact                 _numImagesFact;
+    SettingsFact                 _overlapFact;
 
-    static constexpr const char *_jsonAltitudeKey = "altitude";
+    // static constexpr const char *_jsonAltitudeKey = "altitude";
 };

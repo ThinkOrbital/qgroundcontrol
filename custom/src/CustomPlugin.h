@@ -95,6 +95,9 @@ public:
     /// Adds the Perimeter Scan plan creator to the New Plan dialog.
     QList<PlanCreator *> planCreators(PlanMasterController *planMasterController) final;
 
+    // Return the internal backend.
+    BackendController* backendController() { return _backendController; }
+
 private slots:
     void _advancedChanged(bool advanced);
 

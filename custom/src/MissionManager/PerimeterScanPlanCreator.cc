@@ -16,9 +16,9 @@ PerimeterScanPlanCreator::PerimeterScanPlanCreator(PlanMasterController *planMas
 void PerimeterScanPlanCreator::createPlan(const QGeoCoordinate &mapCenterCoord)
 {
     _planMasterController->removeAll();
-    VisualMissionItem *takeoffItem = _missionController->insertTakeoffItem(mapCenterCoord, -1);
-    _missionController->insertComplexMissionItem(
+    // VisualMissionItem *takeoffItem = _missionController->insertTakeoffItem(mapCenterCoord, -1);
+    auto* perimScanItem = _missionController->insertComplexMissionItem(
         PerimeterScanComplexItem::canonicalName, mapCenterCoord, -1);
-    _missionController->insertLandItem(mapCenterCoord, -1);
-    _missionController->setCurrentPlanViewSeqNum(takeoffItem->sequenceNumber(), true);
+    // _missionController->insertLandItem(mapCenterCoord, -1);
+    _missionController->setCurrentPlanViewSeqNum(perimScanItem->sequenceNumber(), true);
 }

@@ -26,5 +26,6 @@ public:
     DEFINE_SETTINGFACT(numImages)
     DEFINE_SETTINGFACT(fileName)
     DEFINE_SETTINGFACT(detectorXrayWindow)
+    DEFINE_SETTINGFACT(overlap)
 
 };

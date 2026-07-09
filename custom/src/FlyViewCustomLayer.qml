@@ -821,7 +821,7 @@ Item {
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
-                onClicked: backend.sendGoal()
+                onClicked: backend.sendCenterGoal()
                 enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)

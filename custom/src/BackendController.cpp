@@ -343,7 +343,7 @@ void BackendController::processTelemetryUpdates()
             if(elapsed_time >= std::chrono::seconds(1))
             {   
                 //resend target message
-                this->sendGoal();
+                this->sendCenterGoal();
                 qDebug() << "Resend target message";
             }
         }
@@ -894,7 +894,7 @@ void BackendController::setEndMissionButtonEn(const bool enabled)
     }
 }
 
-void BackendController::sendGoal()
+void BackendController::sendCenterGoal()
 {
     qDebug() << "Send Goal Button Pressed!";
 
