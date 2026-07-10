@@ -22,7 +22,7 @@
     "label": "Target Bearing of Emitter Drone"
 },
 {
-    "name": "altitude",
+    "name": "targetAlt",
     "shortDesc": "Target altitude",
     "type": "double",
     "default": 2.0,

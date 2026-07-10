@@ -5,7 +5,7 @@ DECLARE_SETTINGGROUP(Custom, "Custom") {}
 
 DECLARE_SETTINGSFACT(CustomSettings, separationDistance)
 DECLARE_SETTINGSFACT(CustomSettings, bearing)
-DECLARE_SETTINGSFACT(CustomSettings, altitude)
+DECLARE_SETTINGSFACT(CustomSettings, targetAlt)
 DECLARE_SETTINGSFACT(CustomSettings, detOffset)
 DECLARE_SETTINGSFACT(CustomSettings, emAltOffset)
 DECLARE_SETTINGSFACT(CustomSettings, flightAlt)
