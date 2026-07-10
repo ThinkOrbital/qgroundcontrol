@@ -92,7 +92,7 @@ class BackendController : public QObject {
     Q_PROPERTY(uint8_t overlap READ overlap WRITE setOverlap NOTIFY overlapChanged)
     Q_PROPERTY(double sepDistance READ sepDistance WRITE setSepDistance NOTIFY sepDistanceChanged)
     Q_PROPERTY(double bearing READ bearing WRITE setBearing NOTIFY bearingChanged)
-    Q_PROPERTY(double altitude READ altitude WRITE setAltitude NOTIFY altitudeChanged)
+    Q_PROPERTY(double targetAlt READ targetAlt WRITE setTargetAlt NOTIFY targetAltChanged)
     Q_PROPERTY(double detOffset READ detOffset WRITE setDetOffset NOTIFY detOffsetChanged)
     Q_PROPERTY(double emAltOffset READ emAltOffset WRITE setEmAltOffset NOTIFY emAltOffsetChanged)
     Q_PROPERTY(double flightAlt READ flightAlt WRITE setFlightAlt NOTIFY flightAltChanged)
@@ -154,7 +154,7 @@ public:
     uint8_t overlap() const { return overlap_; }
     double sepDistance() const { return sep_distance_; }
     double bearing() const { return bearing_; }
-    double altitude() const { return altitude_; }
+    double targetAlt() const { return target_alt_; }
     double detOffset() const { return detOffset_; }
     double emAltOffset() const { return emAltOffset_; }
     double flightAlt() const { return flight_alt_; }
@@ -303,7 +303,7 @@ public:
     Q_INVOKABLE void setOverlap(const uint8_t overlap);
     Q_INVOKABLE void setSepDistance(const double distance);
     Q_INVOKABLE void setBearing(const double bearing);
-    Q_INVOKABLE void setAltitude(const double altitude);
+    Q_INVOKABLE void setTargetAlt(const double altitude);
     Q_INVOKABLE void setDetOffset(const double offset);
     Q_INVOKABLE void setEmAltOffset(const double offset);
     Q_INVOKABLE void setFlightAlt(const double flightAlt);
@@ -350,7 +350,7 @@ signals:
     void endCoordinateChanged();
     void sepDistanceChanged();
     void bearingChanged();
-    void altitudeChanged();
+    void targetAltChanged();
     void detOffsetChanged();
     void emAltOffsetChanged();
     void flightAltChanged();
@@ -425,7 +425,7 @@ private:
     uint8_t overlap_ {0};
     double sep_distance_ { 10.0 };
     double bearing_ { 0.0 };
-    double altitude_ { 2.0 };
+    double target_alt_ { 2.0 };
     double detOffset_ { 0.0 };
     double emAltOffset_ {0.5};
     double flight_alt_ {10.0};

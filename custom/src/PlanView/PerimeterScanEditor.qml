@@ -28,7 +28,10 @@ Rectangle {
     property real _radius:     ScreenTools.defaultFontPixelWidth / 2
     property var _customSettings:  QGroundControl.corePlugin.customSettings
     property var _sepDistFact: _customSettings.separationDistance
+    property var _targetAltFact: _customSettings.targetAlt
     property var _emAltOffsetFact: _customSettings.emAltOffset
+    property var _flightAltFact: _customSettings.flightAlt
+    property var _flightVelFact: _customSettings.flightVel
     property var _detectorXrayWindowFact: _customSettings.detectorXrayWindow
     property var _fileNameFact: _customSettings.fileName
     property var _numImagesFact: _customSettings.numImages
@@ -76,9 +79,9 @@ Rectangle {
             columns:          2
             visible:          missionItem.corridorPolyline.isValid
 
-            QGCLabel { text: qsTr("Altitude") }
+            QGCLabel { text: qsTr("UAV Flight Altitude") }
             FactTextField {
-                fact: missionItem.altitude
+                fact: _flightAltFact
                 Layout.preferredWidth: _fieldWidth
                 showUnits: true
             }
@@ -91,9 +94,24 @@ Rectangle {
                 showUnits: true
             }
 
+            QGCLabel { text: qsTr("Target Altitude") }
+            FactTextField {
+                fact: _targetAltFact
+                Layout.preferredWidth: _fieldWidth
+                showUnits: true
+            }
+
             QGCLabel { text: qsTr("Emitter Altitude offset") }
             FactTextField {
                 fact: _emAltOffsetFact
+                Layout.preferredWidth: _fieldWidth
+                unitsLabel: "m"
+                showUnits: true
+            }
+
+            QGCLabel { text: qsTr("Flight Velocity") }
+            FactTextField {
+                fact: _flightVelFact
                 Layout.preferredWidth: _fieldWidth
                 unitsLabel: "m"
                 showUnits: true

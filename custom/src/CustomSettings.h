@@ -16,7 +16,7 @@ public:
 
     DEFINE_SETTINGFACT(separationDistance)
     DEFINE_SETTINGFACT(bearing)
-    DEFINE_SETTINGFACT(altitude)
+    DEFINE_SETTINGFACT(targetAlt)
     DEFINE_SETTINGFACT(detOffset)
     DEFINE_SETTINGFACT(emAltOffset)
     DEFINE_SETTINGFACT(flightAlt)

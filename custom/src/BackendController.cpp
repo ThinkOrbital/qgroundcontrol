@@ -820,11 +820,11 @@ void BackendController::setBearing(const double bearing)
     }
 }
 
-void BackendController::setAltitude(const double altitude)
+void BackendController::setTargetAlt(const double altitude)
 {
-    if (altitude_ != altitude) {
-        altitude_ = altitude;
-        emit altitudeChanged();
+    if (target_alt_ != altitude) {
+        target_alt_ = altitude;
+        emit targetAltChanged();
     }
 }
 
@@ -943,6 +943,7 @@ void BackendController::sendLinearScanGoal()
     msg.start_lon = static_cast<int32_t>(startCoordinate().longitude() * 1e7);
     msg.end_lat = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
     msg.end_lon = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
+    msg.angle = 0; // TODO support switching between 0 and 180
     msg.percOverlap = overlap_;
     sendGoal(msg);
 }
@@ -1236,7 +1237,7 @@ void  BackendController::toggleNudgeMode()
 }
 
 void BackendController::sendGoal(mavlink_cooperative_target_definition_t& msg) {
-    msg.altitude     = static_cast<float>(this->altitude_);
+    msg.altitude     = static_cast<float>(this->target_alt_);
     msg.separation   = this->sep_distance_;
     msg.detOffset    = this->detOffset_;
     msg.emAltOffset  = this->emAltOffset_;
