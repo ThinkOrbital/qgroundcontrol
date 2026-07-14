@@ -28,7 +28,7 @@ bool RTCMUdpInput::start()
 
     _running = true;
     emit runningChanged();
-    qCDebug(RTCMUdpInputLog) << "Listening for RTCM data on UDP port" << _port;
+    qCInfo(RTCMUdpInputLog) << "Listening for RTCM data on UDP port" << _port;
     return true;
 }
 

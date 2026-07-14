@@ -35,6 +35,7 @@ public:
     Fact *yaw() { return &_yawFact; }
     Fact *count() { return &_countFact; }
     Fact *lock() { return &_lockFact; }
+    Fact *hacc() { return &_haccFact; }
     Fact *systemErrors() { return &_systemErrorsFact; }
     Fact *spoofingState() { return &_spoofingStateFact; }
     Fact *jammingState() { return &_jammingStateFact; }
@@ -65,6 +66,7 @@ protected:
     Fact _yawFact = Fact(0, QStringLiteral("yaw"), FactMetaData::valueTypeDouble);
     Fact _countFact = Fact(0, QStringLiteral("count"), FactMetaData::valueTypeInt32);
     Fact _lockFact = Fact(0, QStringLiteral("lock"), FactMetaData::valueTypeInt32);
+    Fact _haccFact = Fact(0, QStringLiteral("hacc"), FactMetaData::valueTypeUint32);
     Fact _systemErrorsFact = Fact(0, QStringLiteral("systemErrors"), FactMetaData::valueTypeUint32);
     Fact _spoofingStateFact = Fact(0, QStringLiteral("spoofingState"), FactMetaData::valueTypeUint8);
     Fact _jammingStateFact = Fact(0, QStringLiteral("jammingState"), FactMetaData::valueTypeUint8);

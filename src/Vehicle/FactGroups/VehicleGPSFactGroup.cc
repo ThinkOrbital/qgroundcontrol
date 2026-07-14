@@ -17,6 +17,7 @@ VehicleGPSFactGroup::VehicleGPSFactGroup(QObject *parent)
     _addFact(&_courseOverGroundFact);
     _addFact(&_yawFact);
     _addFact(&_lockFact);
+    _addFact(&_haccFact);
     _addFact(&_countFact);
     _addFact(&_systemErrorsFact);
     _addFact(&_spoofingStateFact);
@@ -79,6 +80,7 @@ void VehicleGPSFactGroup::_handleGpsRawInt(const mavlink_message_t &message)
     courseOverGround()->setRawValue((gpsRawInt.cog == UINT16_MAX) ? qQNaN() : (gpsRawInt.cog / 100.0));
     yaw()->setRawValue((gpsRawInt.yaw == UINT16_MAX) ? qQNaN() : (gpsRawInt.yaw / 100.0));
     lock()->setRawValue(gpsRawInt.fix_type);
+    hacc()->setRawValue(69.9);
 
     _setTelemetryAvailable(true);
 }

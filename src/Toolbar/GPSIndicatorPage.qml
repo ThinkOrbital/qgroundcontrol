@@ -117,6 +117,11 @@ ToolIndicatorPage {
                     labelText: errorText()
                     visible: activeVehicle && activeVehicle.gps.systemErrors.value > 0
                 }
+
+                LabelledLabel {
+                    label:      qsTr("hacc")
+                    labelText:  activeVehicle ? activeVehicle.gps.hacc.valueString : na
+                }
             }
 
             SettingsGroupLayout {
