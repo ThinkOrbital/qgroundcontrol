@@ -72,6 +72,7 @@ public:
 
     void cleanup() final;
     void init() final;
+    void _wireCustomSettingsToBackend();
     QGCOptions *options() final { return _options; }
     // QString brandImageIndoor() const final { return QStringLiteral("/custom/img/dronecode-white.svg"); }
     // QString brandImageOutdoor() const final { return QStringLiteral("/custom/img/dronecode-black.svg"); }
