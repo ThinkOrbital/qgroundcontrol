@@ -72,36 +72,57 @@ void CustomPlugin::_wireCustomSettingsToBackend()
     Fact *xrayWindowFact = _customSettings->detectorXrayWindow();
     Fact *overlapFact = _customSettings->overlap();
 
+    _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
     connect(sepDistFact, &Fact::valueChanged, _backendController, [this, sepDistFact]() {
         _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
     });
+
+    _backendController->setBearing(bearingFact->rawValue().toDouble());
     connect(bearingFact, &Fact::valueChanged, _backendController, [this, bearingFact]() {
         _backendController->setBearing(bearingFact->rawValue().toDouble());
     });
+
+    _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
     connect(targetAltFact, &Fact::valueChanged, _backendController, [this, targetAltFact]() {
         _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
     });
+
+    _backendController->setDetOffset(detOffsetFact->rawValue().toDouble());
     connect(detOffsetFact, &Fact::valueChanged, _backendController, [this, detOffsetFact]() {
         _backendController->setDetOffset(detOffsetFact->rawValue().toDouble());
     });
+
+    _backendController->setEmAltOffset(emAltOffsetFact->rawValue().toDouble());
     connect(emAltOffsetFact, &Fact::valueChanged, _backendController, [this, emAltOffsetFact]() {
         _backendController->setEmAltOffset(emAltOffsetFact->rawValue().toDouble());
     });
+
+    _backendController->setFlightAlt(flightAltFact->rawValue().toDouble());
     connect(flightAltFact, &Fact::valueChanged, _backendController, [this, flightAltFact]() {
         _backendController->setFlightAlt(flightAltFact->rawValue().toDouble());
     });
+
+    _backendController->setFlightVel(flightVelFact->rawValue().toDouble());
     connect(flightVelFact, &Fact::valueChanged, _backendController, [this, flightVelFact]() {
         _backendController->setFlightVel(flightVelFact->rawValue().toDouble());
     });
+
+    _backendController->setNumImages(static_cast<uint8_t>(numImagesFact->rawValue().toUInt()));
     connect(numImagesFact, &Fact::valueChanged, _backendController, [this, numImagesFact]() {
         _backendController->setNumImages(static_cast<uint8_t>(numImagesFact->rawValue().toUInt()));
     });
+
+    _backendController->setFileName(fileNameFact->rawValue().toString());
     connect(fileNameFact, &Fact::valueChanged, _backendController, [this, fileNameFact]() {
         _backendController->setFileName(fileNameFact->rawValue().toString());
     });
+
+    _backendController->setXrayWindow(static_cast<uint64_t>(xrayWindowFact->rawValue().toDouble()));
     connect(xrayWindowFact, &Fact::valueChanged, _backendController, [this, xrayWindowFact]() {
         _backendController->setXrayWindow(static_cast<uint64_t>(xrayWindowFact->rawValue().toDouble()));
     });
+
+    _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
     connect(overlapFact, &Fact::valueChanged, _backendController, [this, overlapFact]() {
         _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
     });
@@ -112,11 +133,9 @@ void CustomPlugin::_wireCustomSettingsToBackend()
             goalLatFact->rawValue().toDouble(),
             goalLonFact->rawValue().toDouble()));
     };
+    updateCenterCoordinate();   // seed initial value
     connect(goalLatFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
     connect(goalLonFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
-
-    // Seed initial values immediately, matching what the old Component.onCompleted did
-    // sepDistFact->valueChanged(sepDistFact->rawValue());          // or just call each setter directly, see note below
 }
 
 QGCCorePlugin *CustomPlugin::instance()
