@@ -47,6 +47,76 @@ void CustomPlugin::init()
 {
     // If this goes in the constructor, it causes a deadlock.
     _customSettings = new CustomSettings(nullptr);
+
+    _wireCustomSettingsToBackend();
+}
+
+void CustomPlugin::_wireCustomSettingsToBackend()
+{
+    if (!_customSettings || !_backendController) {
+        qWarning() << "CustomPlugin: cannot wire settings, _customSettings or _backendController is null";
+        return;
+    }
+
+    Fact *sepDistFact = _customSettings->separationDistance();
+    Fact *bearingFact = _customSettings->bearing();
+    Fact *targetAltFact = _customSettings->targetAlt();
+    Fact *detOffsetFact = _customSettings->detOffset();
+    Fact *emAltOffsetFact = _customSettings->emAltOffset();
+    Fact *flightAltFact = _customSettings->flightAlt();
+    Fact *flightVelFact = _customSettings->flightVel();
+    Fact *goalLatFact = _customSettings->goalLat();
+    Fact *goalLonFact = _customSettings->goalLon();
+    Fact *numImagesFact = _customSettings->numImages();
+    Fact *fileNameFact = _customSettings->fileName();
+    Fact *xrayWindowFact = _customSettings->detectorXrayWindow();
+    Fact *overlapFact = _customSettings->overlap();
+
+    connect(sepDistFact, &Fact::valueChanged, _backendController, [this, sepDistFact]() {
+        _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
+    });
+    connect(bearingFact, &Fact::valueChanged, _backendController, [this, bearingFact]() {
+        _backendController->setBearing(bearingFact->rawValue().toDouble());
+    });
+    connect(targetAltFact, &Fact::valueChanged, _backendController, [this, targetAltFact]() {
+        _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
+    });
+    connect(detOffsetFact, &Fact::valueChanged, _backendController, [this, detOffsetFact]() {
+        _backendController->setDetOffset(detOffsetFact->rawValue().toDouble());
+    });
+    connect(emAltOffsetFact, &Fact::valueChanged, _backendController, [this, emAltOffsetFact]() {
+        _backendController->setEmAltOffset(emAltOffsetFact->rawValue().toDouble());
+    });
+    connect(flightAltFact, &Fact::valueChanged, _backendController, [this, flightAltFact]() {
+        _backendController->setFlightAlt(flightAltFact->rawValue().toDouble());
+    });
+    connect(flightVelFact, &Fact::valueChanged, _backendController, [this, flightVelFact]() {
+        _backendController->setFlightVel(flightVelFact->rawValue().toDouble());
+    });
+    connect(numImagesFact, &Fact::valueChanged, _backendController, [this, numImagesFact]() {
+        _backendController->setNumImages(static_cast<uint8_t>(numImagesFact->rawValue().toUInt()));
+    });
+    connect(fileNameFact, &Fact::valueChanged, _backendController, [this, fileNameFact]() {
+        _backendController->setFileName(fileNameFact->rawValue().toString());
+    });
+    connect(xrayWindowFact, &Fact::valueChanged, _backendController, [this, xrayWindowFact]() {
+        _backendController->setXrayWindow(static_cast<uint64_t>(xrayWindowFact->rawValue().toDouble()));
+    });
+    connect(overlapFact, &Fact::valueChanged, _backendController, [this, overlapFact]() {
+        _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
+    });
+
+    // goalLat/goalLon combine into one QGeoCoordinate-typed property
+    auto updateCenterCoordinate = [this, goalLatFact, goalLonFact]() {
+        _backendController->setCenterCoordinate(QGeoCoordinate(
+            goalLatFact->rawValue().toDouble(),
+            goalLonFact->rawValue().toDouble()));
+    };
+    connect(goalLatFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
+    connect(goalLonFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
+
+    // Seed initial values immediately, matching what the old Component.onCompleted did
+    // sepDistFact->valueChanged(sepDistFact->rawValue());          // or just call each setter directly, see note below
 }
 
 QGCCorePlugin *CustomPlugin::instance()
@@ -284,6 +354,7 @@ QQmlApplicationEngine* CustomPlugin::createQmlApplicationEngine(QObject* parent)
     _qmlEngine->addImportPath("qrc:/qml/Custom/Plan");
     // TODO: Investigate _qmlEngine->setExtraSelectors({"custom"})
     _backendController = new BackendController(this);
+    _wireCustomSettingsToBackend();
 
     _qmlEngine->rootContext()->setContextProperty(
         "backend",

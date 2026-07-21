@@ -944,7 +944,7 @@ void BackendController::sendLinearScanGoal()
     msg.end_lat = static_cast<int32_t>(endCoordinate().latitude() * 1e7);
     msg.end_lon = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
     msg.angle = 0; // TODO support switching between 0 and 180
-    msg.percOverlap = overlap_;
+    msg.percOverlap = overlap();
     sendGoal(msg);
 }
 
