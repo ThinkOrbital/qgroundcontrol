@@ -58,7 +58,7 @@ Item {
     property var  _customSettings:  QGroundControl.corePlugin.customSettings
     property var _sepDistFact: _customSettings.separationDistance
     property var _bearingFact: _customSettings.bearing
-    property var _goalAltitudeFact: _customSettings.altitude
+    property var _targetAltFact: _customSettings.targetAlt
     property var _detOffsetFact: _customSettings.detOffset
     property var _emAltOffsetFact: _customSettings.emAltOffset
     property var _flightAltFact: _customSettings.flightAlt
@@ -231,7 +231,7 @@ Item {
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "m"
                     showUnits: true
-                    fact: _goalAltitudeFact
+                    fact: _targetAltFact
                 }
 
                 // -------- BEARING --------
