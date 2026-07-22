@@ -752,10 +752,7 @@ void BackendController::processTelemetryUpdates()
 void BackendController::nudge(const double azimuth, const double distance)
 {
     QGeoCoordinate newCoord = center_coordinate_.atDistanceAndAzimuth(distance, azimuth);
-    center_coordinate_ = newCoord;
-    emit centerCoordinateChanged();
-    emit emitterGoalCoordChanged();
-    emit detectorGoalCoordChanged();
+    setCenterCoordinate(newCoord);
 }
 
 void BackendController::setScanMissionMode(const bool mode)

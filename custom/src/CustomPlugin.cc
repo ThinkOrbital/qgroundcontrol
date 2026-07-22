@@ -133,9 +133,16 @@ void CustomPlugin::_wireCustomSettingsToBackend()
             goalLatFact->rawValue().toDouble(),
             goalLonFact->rawValue().toDouble()));
     };
-    updateCenterCoordinate();   // seed initial value
+    updateCenterCoordinate(); // seed initial value
     connect(goalLatFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
     connect(goalLonFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
+
+    // In order for the center coordinate fact to persist a reboot of QGC, save the fact.
+    connect(_backendController, &BackendController::centerCoordinateChanged, this, [this, goalLatFact, goalLonFact]() {
+        const QGeoCoordinate coord = _backendController->centerCoordinate();
+        goalLatFact->setRawValue(coord.latitude());
+        goalLonFact->setRawValue(coord.longitude());
+    });
 }
 
 QGCCorePlugin *CustomPlugin::instance()
