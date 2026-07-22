@@ -604,6 +604,21 @@ void BackendController::processTelemetryUpdates()
                         break;
                     }
 
+                    case FlightState::linear_scan:
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::linear_scan) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::linear_scan))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setStopScanButtonEn(true);
+                            this->setEndMissionButtonEn(true);
+                            this->setFlightStatus("Performing X-Ray Scan...");
+                        }
+                        break;
+                    }
+
                     case FlightState::operator_input: //operator input state
                     {
                         if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
@@ -682,7 +697,7 @@ void BackendController::processTelemetryUpdates()
                         this->setSendGoalButtonEn(false);
                         this->setStartMissionButtonEn(false);
                         this->setStopScanButtonEn(false);
-                        this->setEndMissionButtonEn(false);
+                        this->setEndMissionButtonEn(true);
                         break;
                     }
                 }
