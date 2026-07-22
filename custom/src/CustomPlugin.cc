@@ -117,9 +117,9 @@ void CustomPlugin::_wireCustomSettingsToBackend()
         _backendController->setFileName(fileNameFact->rawValue().toString());
     });
 
-    _backendController->setXrayWindow(static_cast<uint64_t>(xrayWindowFact->rawValue().toDouble()));
+    _backendController->setXrayWindow(static_cast<uint16_t>(xrayWindowFact->rawValue().toUInt()));
     connect(xrayWindowFact, &Fact::valueChanged, _backendController, [this, xrayWindowFact]() {
-        _backendController->setXrayWindow(static_cast<uint64_t>(xrayWindowFact->rawValue().toDouble()));
+        _backendController->setXrayWindow(static_cast<uint16_t>(xrayWindowFact->rawValue().toUInt()));
     });
 
     _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
