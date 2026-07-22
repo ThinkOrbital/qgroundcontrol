@@ -110,7 +110,7 @@
 {
     "name": "detectorXrayWindow",
     "shortDesc": "XRay window [ms]",
-    "type": "Int32",
+    "type": "Int16",
     "default": 1000.0,
     "minValue": 100.0,
     "maxValue": 3000.0,

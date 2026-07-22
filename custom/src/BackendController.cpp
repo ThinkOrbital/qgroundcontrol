@@ -1166,7 +1166,7 @@ void BackendController::setCommTimeout(const uint32_t commTimeout)
     }
 }
 
-void BackendController::setXrayWindow(const uint64_t xrayWindow)
+void BackendController::setXrayWindow(const uint16_t xrayWindow)
 {
     if(this->det_xray_window_ms_ != xrayWindow)
     {

@@ -118,7 +118,7 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
 
-    Q_PROPERTY(int32_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
+    Q_PROPERTY(uint16_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
     Q_PROPERTY(uint8_t numImages READ numImages WRITE setNumImages NOTIFY numImagesChanged)
 
@@ -263,7 +263,7 @@ public:
     bool detectorConnected() const {return this->detConn_; };
     QString detStatus() const {return this->det_status_;}
 
-    int64_t detectorXrayWindow() const { return this->det_xray_window_ms_; }
+    uint16_t detectorXrayWindow() const { return this->det_xray_window_ms_; }
     QString fileName() const {return this->file_name_; }
     uint8_t numImages() const {return this->num_images_; }
 
@@ -327,7 +327,7 @@ public:
     Q_INVOKABLE void setVoltage(const uint32_t xrayVoltage);
     Q_INVOKABLE void setCurrent(const uint32_t xrayCurrent);
     Q_INVOKABLE void setCommTimeout(const uint32_t commTimout);
-    Q_INVOKABLE void setXrayWindow(const uint64_t xrayWindow);
+    Q_INVOKABLE void setXrayWindow(const uint16_t xrayWindow);
     Q_INVOKABLE void setFileName(const QString fileName);
     Q_INVOKABLE void setNumImages(const uint8_t numImages);
 
@@ -452,7 +452,7 @@ private:
     StartScan scan_state_ {StartScan::scan_off};
 
     //detector settings
-    uint64_t det_xray_window_ms_ {1000};
+    uint16_t det_xray_window_ms_ {1000};
     uint64_t det_integration_time_ {};
     float    det_battery_voltage_ {};
     uint8_t  det_battery_ext_pow_ {};
