@@ -58,7 +58,7 @@ Item {
     property var  _customSettings:  QGroundControl.corePlugin.customSettings
     property var _sepDistFact: _customSettings.separationDistance
     property var _bearingFact: _customSettings.bearing
-    property var _goalAltitudeFact: _customSettings.altitude
+    property var _targetAltFact: _customSettings.targetAlt
     property var _detOffsetFact: _customSettings.detOffset
     property var _emAltOffsetFact: _customSettings.emAltOffset
     property var _flightAltFact: _customSettings.flightAlt
@@ -231,7 +231,7 @@ Item {
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "m"
                     showUnits: true
-                    fact: _goalAltitudeFact
+                    fact: _targetAltFact
                 }
 
                 // -------- BEARING --------
@@ -821,7 +821,7 @@ Item {
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
-                onClicked: backend.sendGoal()
+                onClicked: backend.sendCenterGoal()
                 enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)
@@ -870,117 +870,6 @@ Item {
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.6) : qgcPal.buttonBorder)
                 }           
             }
-        }
-    }
-
-    Component.onCompleted: {
-        backend.sepDistance = _sepDistFact.value
-        backend.bearing = _bearingFact.value
-        backend.altitude = _goalAltitudeFact.value
-        backend.detOffset = _detOffsetFact.value
-        backend.emAltOffset = _emAltOffsetFact.value
-        backend.flightAlt = _flightAltFact.value
-        backend.flightVel = _flightVelFact.value
-        backend.goalLat = _goalLatFact.value
-        backend.goalLon = _goalLonFact.value
-        backend.numImages = _numImagesFact.value
-        backend.fileName = _fileNameFact.value
-        backend.detectorXrayWindow = _detectorXrayWindowFact.value
-    }
-    Connections {
-        target: _sepDistFact
-
-        function onValueChanged() {
-            backend.sepDistance =
-                _sepDistFact.value
-        }
-    }
-    Connections {
-        target: _bearingFact
-
-        function onValueChanged() {
-            backend.bearing =
-                _bearingFact.value
-        }
-    }
-    Connections {
-        target: _goalAltitudeFact
-
-        function onValueChanged() {
-            backend.altitude =
-                _goalAltitudeFact.value
-        }
-    }
-    Connections {
-        target: _detOffsetFact
-
-        function onValueChanged() {
-            backend.detOffset =
-                _detOffsetFact.value
-        }
-    }
-    Connections {
-        target: _emAltOffsetFact
-
-        function onValueChanged() {
-            backend.emAltOffset =
-                _emAltOffsetFact.value
-        }
-    }
-    Connections {
-        target: _flightAltFact
-
-        function onValueChanged() {
-            backend.flightAlt =
-                _flightAltFact.value
-        }
-    }
-    Connections {
-        target: _flightVelFact
-
-        function onValueChanged() {
-            backend.flightVel =
-                _flightVelFact.value
-        }
-    }
-    Connections {
-        target: _goalLatFact
-
-        function onValueChanged() {
-            backend.goalLat =
-                _goalLatFact.value
-        }
-    }
-    Connections {
-        target: _goalLonFact
-
-        function onValueChanged() {
-            backend.goalLon =
-                _goalLonFact.value
-        }
-    }
-    Connections {
-        target: _numImagesFact
-
-        function onValueChanged() {
-            backend.numImages =
-                _numImagesFact.value
-        }
-    }
-    Connections {
-        target: _fileNameFact
-
-        function onValueChanged() {
-            backend.fileName =
-                _fileNameFact.value
-        }
-    }
-    Connections {
-        target: _detectorXrayWindowFact
-
-        function onValueChanged() {
-            backend.detectorXrayWindow =
-                _detectorXrayWindowFact.value
         }
     }
 }
