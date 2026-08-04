@@ -415,15 +415,23 @@ void BackendController::processTelemetryUpdates()
            
             qDebug() << "UAV " << +sysid << " changed its state to " << (this->flight_state_map_[sysid]);
     
+            bool all_subscribed = false;
+            bool same_state = false;
+
+            all_subscribed = this->singleUAV_ ? 
+                this->subscribed_map_[SYSID_EMITTER] || this->subscribed_map_[SYSID_DETECTOR]: this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR];
+
             switch(this->flight_state_map_[sysid])
             {
-                case FlightState::init: //init state
+                case FlightState::init: 
                 {
-                    // qDebug() << "Inside of init state";
-                    // qDebug() << "subscribed_map_[" << +sysid << "] = " << subscribed_map_[sysid];
-                    if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                    if(all_subscribed)
                     {
-                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::init))
+                        same_state = this->singleUAV_ ? 
+                            this->flight_state_map_[SYSID_EMITTER] == FlightState::init || this->flight_state_map_[SYSID_DETECTOR] == FlightState::init:
+                            this->flight_state_map_[SYSID_EMITTER] == FlightState::init && this->flight_state_map_[SYSID_DETECTOR] == FlightState::init;
+
+                        if(same_state)
                         {
                             QString str_flight_status;
                             
@@ -453,51 +461,16 @@ void BackendController::processTelemetryUpdates()
                             this->setSendGoalButtonEn(true);
                         }
                     } 
-                    //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
-                    //single UAV to work again.It might be better to just add the else if statement directly as an or in the if statement
-                    //above
-                    // else if(this->singleUAV_ && (this->subscribed_map_[SYSID_DETECTOR_COMP] || this->subscribed_map_[SYSID_EMITTER_COMP]))
-                    // {
-                    //     qDebug() << "Inside subscribed_map_ check";
-                    //     QString str_flight_status;
-
-                    //     if(calMsgSent_ && ((this->uav_state_map_[SYSID_DETECTOR_COMP] == 0) || (this->uav_state_map_[SYSID_EMITTER_COMP] == 0)))
-                    //     {
-                    //         this->setStartScanButtonEn(false);
-                    //     }
-                        
-                    //     if(targMsgSent_ && calMsgSent_)
-                    //     {
-                    //         this->setStartMissionButtonEn(true);
-                    //         str_flight_status = "Waiting for user to press start mission button.";
-                    //     }
-
-                    //     if(!targMsgSent_)
-                    //     {
-                    //         str_flight_status += "Waiting for user to send target information to UAVs. \n";
-                    //     }
-
-                    //     if(!calMsgSent_)
-                    //     {
-                    //         str_flight_status += "Waiting for user to calibrate detector. ";
-                    //     }
-
-                    //     if(!str_flight_status.isEmpty())
-                    //     {
-                    //         qDebug() << "Setting flight status to " << str_flight_status;
-                    //         this->setFlightStatus(str_flight_status);
-                    //     }
-
-                    //     this->setResumeMissionButtonEn(false);
-                    //     this->setSendGoalButtonEn(true);   
-                    // }
                     break;
                     }
-                    case FlightState::takeoff: //takeoff state
+                    case FlightState::takeoff:
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::takeoff) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::takeoff))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::takeoff || this->flight_state_map_[SYSID_DETECTOR] == FlightState::takeoff:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::takeoff && this->flight_state_map_[SYSID_DETECTOR] == FlightState::takeoff;
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(false);
@@ -510,11 +483,15 @@ void BackendController::processTelemetryUpdates()
                         }
                         break;
                     }
-                    case FlightState::coord_flight: //coord_flight state
+                    case FlightState::coord_flight:
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::coord_flight) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::coord_flight))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::coord_flight || this->flight_state_map_[SYSID_DETECTOR] == FlightState::coord_flight:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::coord_flight && this->flight_state_map_[SYSID_DETECTOR] == FlightState::coord_flight;
+
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(false);
@@ -527,11 +504,15 @@ void BackendController::processTelemetryUpdates()
                         }
                         break;
                     }
-                    case FlightState::alignment: //alignment state
+                    case FlightState::alignment:
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::alignment) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::alignment))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::alignment || this->flight_state_map_[SYSID_DETECTOR] == FlightState::alignment:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::alignment && this->flight_state_map_[SYSID_DETECTOR] == FlightState::alignment;
+
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(false);
@@ -540,16 +521,19 @@ void BackendController::processTelemetryUpdates()
                                 this->setStopScanButtonEn(false);
                                 this->descend2Targ = false;
                                 this->setFlightStatus("UAVs are aligning...");
-                            
                             }
                         }
                         break;
                     }
-                    case FlightState::descend: //descend state
+                    case FlightState::descend: 
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::descend) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::descend))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::descend || this->flight_state_map_[SYSID_DETECTOR] == FlightState::descend:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::descend && this->flight_state_map_[SYSID_DETECTOR] == FlightState::descend;
+
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(false);
@@ -566,9 +550,13 @@ void BackendController::processTelemetryUpdates()
 
                     case FlightState::scan: //scan state
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::scan) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::scan))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::scan || this->flight_state_map_[SYSID_DETECTOR] == FlightState::scan:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::scan && this->flight_state_map_[SYSID_DETECTOR] == FlightState::scan;
+
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(false);
@@ -603,12 +591,15 @@ void BackendController::processTelemetryUpdates()
                         }
                         break;
                     }
-
-                    case FlightState::operator_input: //operator input state
+                    case FlightState::operator_input:
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::operator_input) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::operator_input))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::operator_input || this->flight_state_map_[SYSID_DETECTOR] == FlightState::operator_input:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::operator_input && this->flight_state_map_[SYSID_DETECTOR] == FlightState::operator_input;
+
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(true);
@@ -626,32 +617,16 @@ void BackendController::processTelemetryUpdates()
                                 }
                             }
                         }
-                        //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
-                        //single UAV to work again. It might be better to just add the else if statement directly as an or in the if statement
-                        //above.
-                        // else if(this->singleUAV_ && (this->subscribed_map_[sysid] || this->subscribed_map_[sysid]))
-                        // {
-                        //     this->setStartMissionButtonEn(false);
-                        //     this->setResumeMissionButtonEn(true);
-                        //     this->setSendGoalButtonEn(true);
-                        //     this->setStopScanButtonEn(false);
-                        //     this->setStartScanButtonEn(this->descend2Targ);
-                        //     this->setEndMissionButtonEn(true);
-                        //     if(this->descend2Targ)
-                        //     {
-                        //         this->setFlightStatus("Waiting for user adjustments and/or scan...");
-                        //     } 
-                        //     else
-                        //     {
-                        //         this->setFlightStatus("Waiting for user adjustments and/or resume mission...");
-                        //     }   
-                        // }
                         break;
-                    case FlightState::rtl: //rtl state
+                    case FlightState::rtl: 
                     {
-                        if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
+                        if(all_subscribed)
                         {
-                            if((this->flight_state_map_[SYSID_EMITTER] == FlightState::rtl) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::rtl))
+                            same_state = this->singleUAV_ ? 
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::rtl || this->flight_state_map_[SYSID_DETECTOR] == FlightState::rtl:
+                                this->flight_state_map_[SYSID_EMITTER] == FlightState::rtl && this->flight_state_map_[SYSID_DETECTOR] == FlightState::rtl;
+
+                            if(same_state)
                             {
                                 this->setStartMissionButtonEn(false);
                                 this->setResumeMissionButtonEn(false);
@@ -664,7 +639,7 @@ void BackendController::processTelemetryUpdates()
                         }
                         break;
                     }
-                    case FlightState::test: //test state
+                    case FlightState::test: 
                     {
                         this->setStartMissionButtonEn(true);
                         this->setResumeMissionButtonEn(false);
