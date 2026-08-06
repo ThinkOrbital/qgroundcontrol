@@ -16,7 +16,7 @@
 #include "mavlink.h"
 #include "MAVLinkProtocol.h"
 
-enum class FlightState{init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, test};
+enum class FlightState{no_conn, init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, linear_scan, test};
 
 enum class DetStatus : uint8_t {
      no_connection = 0,
@@ -45,19 +45,21 @@ enum class StartScan : uint8_t {
 };
 
 enum class AckType : uint8_t {
-        ack_target = 0,
-        ack_coop_init = 1,
-        ack_coop_takeoff = 2,
-        ack_coop_flight = 3,
-        ack_coop_align = 4,
-        ack_coop_descend = 5,
-        ack_coop_scan = 6,
-        ack_coop_rtl = 7,
-        ack_coop_opin = 8,
-        ack_start_start = 9,
-        ack_start_resume = 10,
-        ack_start_end = 11,
-        ack_scan = 12
+        ack_none = 0,
+        ack_target = 1,
+        ack_coop_init = 2,
+        ack_coop_takeoff = 3,
+        ack_coop_flight = 4,
+        ack_coop_align = 5,
+        ack_coop_descend = 6,
+        ack_coop_scan = 7,
+        ack_coop_linear_scan = 8,
+        ack_coop_rtl = 9,
+        ack_coop_opin = 10,
+        ack_start_start = 11,
+        ack_start_resume = 12,
+        ack_start_end = 13,
+        ack_scan = 14
 };
 
 struct TelemetryStruct {
@@ -113,6 +115,7 @@ class BackendController : public QObject {
     //button enable/disable
     Q_PROPERTY(bool isStartMissionButtonEn READ isStartMissionButtonEn WRITE setStartMissionButtonEn NOTIFY startMissionButtonChanged);
     Q_PROPERTY(bool isResumeMissionButtonEn READ isResumeMissionButtonEn WRITE setResumeMissionButtonEn NOTIFY resumeMissionButtonChanged);
+    Q_PROPERTY(bool isCalibrateButtonEn READ isCalibrateButtonEn WRITE setCalibrateButtonEn NOTIFY calibrateButtonChanged);
     Q_PROPERTY(bool isStartScanButtonEn READ isStartScanButtonEn WRITE setStartScanButtonEn NOTIFY startScanButtonChanged);
     Q_PROPERTY(bool isStopScanButtonEn READ isStopScanButtonEn WRITE setStopScanButtonEn NOTIFY stopScanButtonChanged);
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
@@ -246,6 +249,7 @@ public:
 
     bool isStartMissionButtonEn() const { return this->isStartMissionButtonEn_; }
     bool isResumeMissionButtonEn() const { return this->isResumeMissionButtonEn_; }
+    bool isCalibrateButtonEn() const { return this->isCalibrateButtonEn_;}
     bool isStartScanButtonEn() const { return this->isStartScanButtonEn_; }
     bool isStopScanButtonEn() const { return this->isStopScanButtonEn_; }
     bool isSendGoalButtonEn() const { return this->isSendGoalButtonEn_; }
@@ -289,6 +293,7 @@ public:
     //enable/disable buttons
     Q_INVOKABLE void setStartMissionButtonEn(const bool enabled);
     Q_INVOKABLE void setResumeMissionButtonEn(const bool enabled);
+    Q_INVOKABLE void setCalibrateButtonEn(const bool enabled);
     Q_INVOKABLE void setStartScanButtonEn(const bool enabled);
     Q_INVOKABLE void setStopScanButtonEn(const bool enabled);
     Q_INVOKABLE void setSendGoalButtonEn(const bool enabled);
@@ -370,6 +375,7 @@ signals:
 
     void startMissionButtonChanged();
     void resumeMissionButtonChanged();
+    void calibrateButtonChanged();
     void startScanButtonChanged();
     void stopScanButtonChanged();
     void sendGoalButtonChanged();
@@ -434,6 +440,7 @@ private:
     bool scanMissionMode_ = {true};
     bool isStartMissionButtonEn_ = {false};
     bool isResumeMissionButtonEn_ = {false};
+    bool isCalibrateButtonEn_ = {false};
     bool isStartScanButtonEn_ = {false};
     bool isStopScanButtonEn_ = {false};
     bool isSendGoalButtonEn_ = {false};

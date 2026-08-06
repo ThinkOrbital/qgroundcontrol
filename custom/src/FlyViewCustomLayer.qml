@@ -50,7 +50,7 @@ Item {
             ? _vehicleEmitter.healthAndArmingCheckReport.canArm
             : !_vehicleEmitter.prearmError)
         : false
-    property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
+    property bool _vehiclesReadyForMission: _detectorCanArm || _emitterCanArm
 
     // Nudge mode: 0 = Absolute (N/E/S/W), 1 = Relative (Fwd/Back/L/R) vs active vehicle heading
     property int nudgeMode: 0
@@ -633,7 +633,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Calibrate Payloads"
                 onClicked: backend.payloadCal()
-                enabled: _vehicleDetector && _vehicleEmitter && !_vehicleDetector.flying && !_vehicleEmitter.flying
+                enabled: backend.isCalibrateButtonEn
             }
 
             QGCButton {
@@ -755,7 +755,7 @@ Item {
                         Layout.preferredWidth: 60
                         unitsLabel: "m"
                         showUnits: true
-                        text: "0.50"
+                        text: "0.5"
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -822,7 +822,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
                 onClicked: backend.sendCenterGoal()
-                enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
+                enabled: backend.isSendGoalButtonEn 
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.6) : qgcPal.buttonBorder)
