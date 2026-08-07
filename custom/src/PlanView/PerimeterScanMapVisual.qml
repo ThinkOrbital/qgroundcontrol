@@ -61,21 +61,21 @@ Item {
         }
     }
 
-    Connections {
-        target: _polygon
-        function onPathChanged() {
-            console.log("PerimeterScanMapVisual: _polygon.pathChanged fired, count =", _polygon.count)
-        }
-    }
+    // Connections {
+    //     target: _polygon
+    //     function onPathChanged() {
+    //         console.log("PerimeterScanMapVisual: _polygon.pathChanged fired, count =", _polygon.count)
+    //     }
+    // }
 
-    Component.onCompleted: {
-        console.log("PerimeterScanMapVisual: onCompleted, _root.interactive =", interactive,
-                     " _currentItem =", _currentItem,
-                     " combined (interactive for polyline) =", (_currentItem && _root.interactive))
-        console.log("PerimeterScanMapVisual: _polygon at startup =", _polygon,
-                        " count =", _polygon.count)
-    
-    }
+    // Component.onCompleted: {
+    //     console.log("PerimeterScanMapVisual: onCompleted, _root.interactive =", interactive,
+    //                  " _currentItem =", _currentItem,
+    //                  " combined (interactive for polyline) =", (_currentItem && _root.interactive))
+    //     console.log("PerimeterScanMapVisual: _polygon at startup =", _polygon,
+    //                     " count =", _polygon.count)
+
+    // }
 
     Component.onDestruction: {
         objMgr.destroyObjects()
