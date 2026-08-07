@@ -8,6 +8,7 @@
 #include "QGCLoggingCategory.h"
 #include "SettingsManager.h"
 #include "CustomPlugin.h"
+#include "CustomSettings.h"
 #include "BackendController.h"
 
 #include <QtCore/QJsonArray>
@@ -35,6 +36,23 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
     //     emit minAMSLAltitudeChanged();
     //     emit maxAMSLAltitudeChanged();
     // });
+    // sepDist/emAltOffset/detectorXrayWindow/fileName/numImages/overlap are not
+    // PerimeterScan's own settings; they live on CustomSettings, so borrow the
+    // same Fact instances the QML editor uses (QGroundControl.corePlugin.customSettings).
+    CustomPlugin *customPlugin = qobject_cast<CustomPlugin *>(QGCCorePlugin::instance());
+    CustomSettings *customSettings = customPlugin ? customPlugin->customSettings() : nullptr;
+    if (customSettings) {
+        _sepDistFact = customSettings->separationDistance();
+        _emAltOffsetFact = customSettings->emAltOffset();
+        _detectorXrayWindowFact = customSettings->detectorXrayWindow();
+        _fileNameFact = customSettings->fileName();
+        _numImagesFact = customSettings->numImages();
+        _overlapFact = customSettings->overlap();
+        connect(_sepDistFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
+    } else {
+        qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
+    }
+
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_setDirty);
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_polylineChanged);
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);

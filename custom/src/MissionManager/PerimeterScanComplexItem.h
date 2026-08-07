@@ -41,12 +41,12 @@ public:
     QGCMapPolyline *corridorPolyline(void) { return &_corridorPolyline; }
     QGCMapPolygon *offsetPolygon() { return &_offsetPolygon; }
     Fact *altitude() { return &_altitudeFact; }
-    Fact *sepDist() { return &_sepDistFact; }
-    Fact *emAltOffset() { return &_emAltOffsetFact; }
-    Fact *detectorXrayWindow() { return &_detectorXrayWindowFact; }
-    Fact *fileName() { return &_fileNameFact; }
-    Fact *numImages() { return &_numImagesFact; }
-    Fact *overlap() { return &_overlapFact; }
+    Fact *sepDist() { return _sepDistFact; }
+    Fact *emAltOffset() { return _emAltOffsetFact; }
+    Fact *detectorXrayWindow() { return _detectorXrayWindowFact; }
+    Fact *fileName() { return _fileNameFact; }
+    Fact *numImages() { return _numImagesFact; }
+    Fact *overlap() { return _overlapFact; }
 
     // These are called by the editor QML's polygon-capture callbacks.
     Q_INVOKABLE void clearPolyline() { _corridorPolyline.clear(); }
@@ -113,10 +113,13 @@ private:
     QGCMapPolyline _corridorPolyline;
     QMap<QString, FactMetaData *> _metaDataMap;
     SettingsFact _altitudeFact;
-    SettingsFact _sepDistFact;
-    SettingsFact _emAltOffsetFact;
-    SettingsFact _detectorXrayWindowFact;
-    SettingsFact _fileNameFact;
-    SettingsFact _numImagesFact;
-    SettingsFact _overlapFact;
+    // These mirror Facts owned by CustomSettings (see constructor); they are
+    // borrowed pointers, not locally-owned SettingsFacts, since PerimeterScan
+    // has no metadata entries of its own for them.
+    Fact *_sepDistFact = nullptr;
+    Fact *_emAltOffsetFact = nullptr;
+    Fact *_detectorXrayWindowFact = nullptr;
+    Fact *_fileNameFact = nullptr;
+    Fact *_numImagesFact = nullptr;
+    Fact *_overlapFact = nullptr;
 };
