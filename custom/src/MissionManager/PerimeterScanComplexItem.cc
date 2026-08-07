@@ -108,10 +108,8 @@ void PerimeterScanComplexItem::_rebuildOffsetPolygon()
         return;
     }
 
-    // TODO get width based on separation and offsets.
-    // Need to flip emitter/detector based on toggle in the menu for which is on which side of the line.
-    // double halfWidth = _corridorWidthFact.rawValue().toDouble() / 2.0; 
-    double halfWidth = 5.0;
+    auto const halfWidth = sepDist()->rawValue().toDouble() / 2.0;
+    qWarning() << "*** _rebuildOffsetPolygon halfWidth =" << halfWidth;
 
     QList<QGeoCoordinate> firstSideVertices = _corridorPolyline.offsetPolyline(halfWidth);
     QList<QGeoCoordinate> secondSideVertices = _corridorPolyline.offsetPolyline(-halfWidth);
