@@ -21,24 +21,9 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
     : ComplexMissionItem(masterController, flyView)
     , _metaDataMap(FactMetaData::createMapFromJsonFile(
           QStringLiteral(":/json/PerimeterScan.SettingsGroup.json"), this))
-    // , _altitudeFact(settingsGroup, _metaDataMap[QStringLiteral("Altitude")])
 {
     _editorQml = QStringLiteral("qrc:/qml/Custom/Plan/PerimeterScanEditor.qml");
 
-    // Initialise altitude from the application default.
-    // _altitudeFact.setRawValue(
-    //     SettingsManager::instance()->appSettings()->defaultMissionItemAltitude()->rawValue());
-
-    // connect(&_altitudeFact, &Fact::valueChanged, this, [this]() {
-    //     _setDirty();
-    //     emit amslEntryAltChanged(amslEntryAlt());
-    //     emit amslExitAltChanged(amslExitAlt());
-    //     emit minAMSLAltitudeChanged();
-    //     emit maxAMSLAltitudeChanged();
-    // });
-    // sepDist/emAltOffset/detectorXrayWindow/fileName/numImages/overlap are not
-    // PerimeterScan's own settings; they live on CustomSettings, so borrow the
-    // same Fact instances the QML editor uses (QGroundControl.corePlugin.customSettings).
     CustomPlugin *customPlugin = qobject_cast<CustomPlugin *>(QGCCorePlugin::instance());
     CustomSettings *customSettings = customPlugin ? customPlugin->customSettings() : nullptr;
     if (customSettings) {
@@ -108,7 +93,6 @@ void PerimeterScanComplexItem::_polylineChanged()
 {
     _recalcScanDistance();
     emit coordinateChanged(coordinate());
-    // emit exitCoordinateChanged(exitCoordinate());
     emit specifiesCoordinateChanged();
     emit lastSequenceNumberChanged(lastSequenceNumber());
     emit readyForSaveStateChanged();
@@ -126,6 +110,12 @@ void PerimeterScanComplexItem::_rebuildOffsetPolygon()
         return;
     }
 
+    if (sepDist() == nullptr) {
+        qCWarning(PerimeterScanLog) << "sepDist Fact is null, cannot rebuild offset polygon";
+        return;
+    }
+
+    // TODO use the emitter offset to offset the polygon
     auto const halfWidth = sepDist()->rawValue().toDouble() / 2.0;
     qWarning() << "*** _rebuildOffsetPolygon halfWidth =" << halfWidth;
 
@@ -151,11 +141,7 @@ void PerimeterScanComplexItem::_rebuildOffsetPolygon()
 void PerimeterScanComplexItem::_recalcScanDistance()
 {
     _scanDistance = 0.0;
-    // const int count = _perimeterPolygon.count();
-    // for (int i = 0; i < count; ++i) {
-    //     _scanDistance += _perimeterPolygon.vertexCoordinate(i)
-    //                          .distanceTo(_perimeterPolygon.vertexCoordinate((i + 1) % count));
-    // }
+    // TODO remove or add support for scans
     emit complexDistanceChanged();
 }
 
@@ -171,10 +157,7 @@ QGeoCoordinate PerimeterScanComplexItem::coordinate() const
 
 QGeoCoordinate PerimeterScanComplexItem::exitCoordinate() const
 {
-    // const int count = _perimeterPolygon.count();
-    // if (count > 0) {
-    //     return _perimeterPolygon.vertexCoordinate(count - 1);
-    // }
+    // TODO remove
     return {};
 }
 
@@ -203,9 +186,7 @@ double PerimeterScanComplexItem::greatestDistanceTo(const QGeoCoordinate &other)
 {
     double maxDist = 0;
     (void) other;
-    // for (int i = 0; i < _perimeterPolygon.count(); ++i) {
-    //     maxDist = qMax(maxDist, _perimeterPolygon.vertexCoordinate(i).distanceTo(other));
-    // }
+    // TODO remove
     return maxDist;
 }
 
