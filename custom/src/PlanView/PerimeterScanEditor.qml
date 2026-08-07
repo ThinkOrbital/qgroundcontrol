@@ -37,19 +37,6 @@ Rectangle {
     property var _numImagesFact: _customSettings.numImages
     property var _overlapFact: _customSettings.overlap
 
-
-    // These callbacks are invoked by QGCMapPolylineVisuals when it is used
-    // in a "capture" mode (legacy path — kept for API completeness).
-    //function polygonCaptureStarted()                              { missionItem.clearPolygon() }
-    //function polygonCaptureFinished(coordinates) {
-    //    for (var i = 0; i < coordinates.length; i++) {
-    //        missionItem.addPolygonCoordinate(coordinates[i])
-    //    }
-    //}
-    // function polygonAdjustVertex(vertexIndex, vertexCoordinate)   { missionItem.adjustPolygonCoordinate(vertexIndex, vertexCoordinate) }
-    // function polygonAdjustStarted()  {}
-    // function polygonAdjustFinished() {}
-
     QGCPalette { id: qgcPal; colorGroupEnabled: true }
 
     ColumnLayout {
