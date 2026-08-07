@@ -30,34 +30,34 @@ public:
     // Q_PROPERTY(QGCMapPolygon *perimeterPolygon READ perimeterPolygon CONSTANT) // TODO remove
     Q_PROPERTY(QGCMapPolygon *offsetPolygon READ offsetPolygon CONSTANT)
     Q_PROPERTY(QGCMapPolyline *corridorPolyline READ corridorPolyline CONSTANT)
-    Q_PROPERTY(Fact          *altitude         READ altitude         CONSTANT)
-    Q_PROPERTY(Fact          *sepDist         READ sepDist         CONSTANT)
-    Q_PROPERTY(Fact          *emAltOffset         READ emAltOffset         CONSTANT)
-    Q_PROPERTY(Fact          *detectorXrayWindow         READ detectorXrayWindow         CONSTANT)
-    Q_PROPERTY(Fact          *fileName         READ fileName         CONSTANT)
-    Q_PROPERTY(Fact          *numImages         READ numImages         CONSTANT)
-    Q_PROPERTY(Fact          *overlap         READ overlap         CONSTANT)
+    Q_PROPERTY(Fact *altitude READ altitude CONSTANT)
+    Q_PROPERTY(Fact *sepDist READ sepDist CONSTANT)
+    Q_PROPERTY(Fact *emAltOffset READ emAltOffset CONSTANT)
+    Q_PROPERTY(Fact *detectorXrayWindow READ detectorXrayWindow CONSTANT)
+    Q_PROPERTY(Fact *fileName READ fileName CONSTANT)
+    Q_PROPERTY(Fact *numImages READ numImages CONSTANT)
+    Q_PROPERTY(Fact *overlap READ overlap CONSTANT)
 
     QGCMapPolyline *corridorPolyline(void) { return &_corridorPolyline; }
     QGCMapPolygon *offsetPolygon() { return &_offsetPolygon; }
-    Fact          *altitude()         { return &_altitudeFact; }
-    Fact          *sepDist()         { return &_sepDistFact; }
-    Fact          *emAltOffset()         { return &_emAltOffsetFact; }
-    Fact          *detectorXrayWindow()         { return &_detectorXrayWindowFact; }
-    Fact          *fileName()         { return &_fileNameFact; }
-    Fact          *numImages()         { return &_numImagesFact; }
-    Fact          *overlap()         { return &_overlapFact; }
+    Fact *altitude() { return &_altitudeFact; }
+    Fact *sepDist() { return &_sepDistFact; }
+    Fact *emAltOffset() { return &_emAltOffsetFact; }
+    Fact *detectorXrayWindow() { return &_detectorXrayWindowFact; }
+    Fact *fileName() { return &_fileNameFact; }
+    Fact *numImages() { return &_numImagesFact; }
+    Fact *overlap() { return &_overlapFact; }
 
     // These are called by the editor QML's polygon-capture callbacks.
-    Q_INVOKABLE void clearPolyline()                                              { _corridorPolyline.clear(); }
-    Q_INVOKABLE void addPolylineCoordinate(const QGeoCoordinate &coordinate)     { _corridorPolyline.appendVertex(coordinate); }
+    Q_INVOKABLE void clearPolyline() { _corridorPolyline.clear(); }
+    Q_INVOKABLE void addPolylineCoordinate(const QGeoCoordinate &coordinate) { _corridorPolyline.appendVertex(coordinate); }
     Q_INVOKABLE void adjustPolylineCoordinate(int vertexIndex,
                                              const QGeoCoordinate &coordinate)  { _corridorPolyline.adjustVertex(vertexIndex, coordinate); }
     Q_INVOKABLE void sendLinearScanGoal();
 
-    static constexpr const char *canonicalName           = "Perimeter Scan";
+    static constexpr const char *canonicalName = "Perimeter Scan";
     static constexpr const char *jsonComplexItemTypeValue = "perimeterScan";
-    static constexpr const char *settingsGroup            = "PerimeterScan";
+    static constexpr const char *settingsGroup = "PerimeterScan";
 
     // ComplexMissionItem overrides
     QString             patternName         () const final { return tr(canonicalName); }
@@ -107,18 +107,16 @@ private slots:
 private:
     void _recalcScanDistance();
 
-    int                          _sequenceNumber = 0;
-    double                       _scanDistance   = 0.0;
-    QGCMapPolygon                _offsetPolygon; // The polygon that shows where the drones will fly during the scan
-    QGCMapPolyline               _corridorPolyline;
+    int _sequenceNumber = 0;
+    double _scanDistance   = 0.0;
+    QGCMapPolygon _offsetPolygon; // The polygon that shows where the drones will fly during the scan
+    QGCMapPolyline _corridorPolyline;
     QMap<QString, FactMetaData *> _metaDataMap;
-    SettingsFact                 _altitudeFact;
-    SettingsFact                 _sepDistFact;
-    SettingsFact                 _emAltOffsetFact;
-    SettingsFact                 _detectorXrayWindowFact;
-    SettingsFact                 _fileNameFact;
-    SettingsFact                 _numImagesFact;
-    SettingsFact                 _overlapFact;
-
-    // static constexpr const char *_jsonAltitudeKey = "altitude";
+    SettingsFact _altitudeFact;
+    SettingsFact _sepDistFact;
+    SettingsFact _emAltOffsetFact;
+    SettingsFact _detectorXrayWindowFact;
+    SettingsFact _fileNameFact;
+    SettingsFact _numImagesFact;
+    SettingsFact _overlapFact;
 };
