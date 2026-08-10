@@ -307,7 +307,6 @@ bool PerimeterScanComplexItem::load(const QJsonObject &complexObject,
 
     setSequenceNumber(sequenceNumber);
     _corridorPolyline.clear();
-    // _altitudeFact.setRawValue(complexObject[_jsonAltitudeKey].toDouble());
 
     if (!_corridorPolyline.loadFromJson(complexObject, true /* required */, errorString)) {
         return false;
