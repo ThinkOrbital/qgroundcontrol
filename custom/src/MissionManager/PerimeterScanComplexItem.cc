@@ -19,8 +19,6 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
                                                    bool flyView,
                                                    const QString &kmlOrShpFile)
     : ComplexMissionItem(masterController, flyView)
-    , _metaDataMap(FactMetaData::createMapFromJsonFile(
-          QStringLiteral(":/json/PerimeterScan.SettingsGroup.json"), this))
 {
     _editorQml = QStringLiteral("qrc:/qml/Custom/Plan/PerimeterScanEditor.qml");
 

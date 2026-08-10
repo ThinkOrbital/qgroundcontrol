@@ -111,7 +111,6 @@ private:
     double _scanDistance   = 0.0;
     QGCMapPolygon _offsetPolygon; // The polygon that shows where the drones will fly during the scan
     QGCMapPolyline _corridorPolyline;
-    QMap<QString, FactMetaData *> _metaDataMap;
     SettingsFact _altitudeFact;
     // These mirror Facts owned by CustomSettings (see constructor); they are
     // borrowed pointers, not locally-owned SettingsFacts, since PerimeterScan

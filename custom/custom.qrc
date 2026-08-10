@@ -36,7 +36,4 @@
     <qresource prefix="/res">
         <file alias="gear-white.svg">../resources/gear-white.svg</file>
     </qresource>
-    <qresource prefix="/json">
-        <file alias="PerimeterScan.SettingsGroup.json">res/json/PerimeterScan.SettingsGroup.json</file>
-    </qresource>
 </RCC>
