@@ -16,7 +16,7 @@
 #include "mavlink.h"
 #include "MAVLinkProtocol.h"
 
-enum class FlightState{init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, test};
+enum class FlightState{no_conn, init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, linear_scan, test};
 
 enum class DetStatus : uint8_t {
      no_connection = 0,
@@ -45,19 +45,21 @@ enum class StartScan : uint8_t {
 };
 
 enum class AckType : uint8_t {
-        ack_target = 0,
-        ack_coop_init = 1,
-        ack_coop_takeoff = 2,
-        ack_coop_flight = 3,
-        ack_coop_align = 4,
-        ack_coop_descend = 5,
-        ack_coop_scan = 6,
-        ack_coop_rtl = 7,
-        ack_coop_opin = 8,
-        ack_start_start = 9,
-        ack_start_resume = 10,
-        ack_start_end = 11,
-        ack_scan = 12
+        ack_none = 0,
+        ack_target = 1,
+        ack_coop_init = 2,
+        ack_coop_takeoff = 3,
+        ack_coop_flight = 4,
+        ack_coop_align = 5,
+        ack_coop_descend = 6,
+        ack_coop_scan = 7,
+        ack_coop_linear_scan = 8,
+        ack_coop_rtl = 9,
+        ack_coop_opin = 10,
+        ack_start_start = 11,
+        ack_start_resume = 12,
+        ack_start_end = 13,
+        ack_scan = 14
 };
 
 struct TelemetryStruct {
@@ -87,9 +89,12 @@ class BackendController : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool scanMissionMode READ scanMissionMode WRITE setScanMissionMode NOTIFY scanMissionModeChanged)
     Q_PROPERTY(QGeoCoordinate centerCoordinate READ centerCoordinate WRITE setCenterCoordinate NOTIFY centerCoordinateChanged)
+    Q_PROPERTY(QGeoCoordinate startCoordinate READ startCoordinate WRITE setStartCoordinate NOTIFY startCoordinateChanged)
+    Q_PROPERTY(QGeoCoordinate endCoordinate READ endCoordinate WRITE setEndCoordinate NOTIFY endCoordinateChanged)
+    Q_PROPERTY(uint8_t overlap READ overlap WRITE setOverlap NOTIFY overlapChanged)
     Q_PROPERTY(double sepDistance READ sepDistance WRITE setSepDistance NOTIFY sepDistanceChanged)
     Q_PROPERTY(double bearing READ bearing WRITE setBearing NOTIFY bearingChanged)
-    Q_PROPERTY(double altitude READ altitude WRITE setAltitude NOTIFY altitudeChanged)
+    Q_PROPERTY(double targetAlt READ targetAlt WRITE setTargetAlt NOTIFY targetAltChanged)
     Q_PROPERTY(double detOffset READ detOffset WRITE setDetOffset NOTIFY detOffsetChanged)
     Q_PROPERTY(double emAltOffset READ emAltOffset WRITE setEmAltOffset NOTIFY emAltOffsetChanged)
     Q_PROPERTY(double flightAlt READ flightAlt WRITE setFlightAlt NOTIFY flightAltChanged)
@@ -115,7 +120,7 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
 
-    Q_PROPERTY(int32_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
+    Q_PROPERTY(uint16_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
     Q_PROPERTY(uint8_t numImages READ numImages WRITE setNumImages NOTIFY numImagesChanged)
 
@@ -146,9 +151,12 @@ public:
     explicit BackendController(QObject *parent = nullptr);
     bool scanMissionMode() const { return scanMissionMode_; }
     QGeoCoordinate centerCoordinate() const { return center_coordinate_; }
+    QGeoCoordinate startCoordinate() const { return start_coordinate_; }
+    QGeoCoordinate endCoordinate() const { return end_coordinate_; }
+    uint8_t overlap() const { return overlap_; }
     double sepDistance() const { return sep_distance_; }
     double bearing() const { return bearing_; }
-    double altitude() const { return altitude_; }
+    double targetAlt() const { return target_alt_; }
     double detOffset() const { return detOffset_; }
     double emAltOffset() const { return emAltOffset_; }
     double flightAlt() const { return flight_alt_; }
@@ -257,7 +265,7 @@ public:
     bool detectorConnected() const {return this->detConn_; };
     QString detStatus() const {return this->det_status_;}
 
-    int64_t detectorXrayWindow() const { return this->det_xray_window_ms_; }
+    uint16_t detectorXrayWindow() const { return this->det_xray_window_ms_; }
     QString fileName() const {return this->file_name_; }
     uint8_t numImages() const {return this->num_images_; }
 
@@ -289,18 +297,21 @@ public:
     Q_INVOKABLE void setEndMissionButtonEn(const bool enabled);
 
     //detect GUI changes and button presses
-    // Q_INVOKABLE void connectRequested(const QString &connStr);
     Q_INVOKABLE void nudge(const double azimuth, const double distance);
     Q_INVOKABLE void setScanMissionMode(const bool mode);
     Q_INVOKABLE void setCenterCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void setStartCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void setEndCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void setOverlap(const uint8_t overlap);
     Q_INVOKABLE void setSepDistance(const double distance);
     Q_INVOKABLE void setBearing(const double bearing);
-    Q_INVOKABLE void setAltitude(const double altitude);
+    Q_INVOKABLE void setTargetAlt(const double altitude);
     Q_INVOKABLE void setDetOffset(const double offset);
     Q_INVOKABLE void setEmAltOffset(const double offset);
     Q_INVOKABLE void setFlightAlt(const double flightAlt);
     Q_INVOKABLE void setFlightVel(const double flightVel);
-    Q_INVOKABLE void sendGoal();
+    Q_INVOKABLE void sendCenterGoal();
+    Q_INVOKABLE void sendLinearScanGoal();
     Q_INVOKABLE void startMission();
     Q_INVOKABLE void resumeMission();
     Q_INVOKABLE void endMission();
@@ -318,7 +329,7 @@ public:
     Q_INVOKABLE void setVoltage(const uint32_t xrayVoltage);
     Q_INVOKABLE void setCurrent(const uint32_t xrayCurrent);
     Q_INVOKABLE void setCommTimeout(const uint32_t commTimout);
-    Q_INVOKABLE void setXrayWindow(const uint64_t xrayWindow);
+    Q_INVOKABLE void setXrayWindow(const uint16_t xrayWindow);
     Q_INVOKABLE void setFileName(const QString fileName);
     Q_INVOKABLE void setNumImages(const uint8_t numImages);
 
@@ -336,9 +347,12 @@ signals:
     void connectionResult(bool success);
     void onConnectionStateChange(bool connected, uint8_t sysid);
     void centerCoordinateChanged();
+    void startCoordinateChanged();
+    void overlapChanged();
+    void endCoordinateChanged();
     void sepDistanceChanged();
     void bearingChanged();
-    void altitudeChanged();
+    void targetAltChanged();
     void detOffsetChanged();
     void emAltOffsetChanged();
     void flightAltChanged();
@@ -405,11 +419,15 @@ private:
     void sendStartMission(StartMission state);
     void sendStartScan(StartScan state);
     void send_ack(AckType type, uint8_t src_id);
+    void sendGoal(mavlink_cooperative_target_definition_t& msg);
 
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
+    QGeoCoordinate start_coordinate_;
+    QGeoCoordinate end_coordinate_;
+    uint8_t overlap_ {0};
     double sep_distance_ { 10.0 };
     double bearing_ { 0.0 };
-    double altitude_ { 2.0 };
+    double target_alt_ { 2.0 };
     double detOffset_ { 0.0 };
     double emAltOffset_ {0.5};
     double flight_alt_ {10.0};
@@ -436,7 +454,7 @@ private:
     StartScan scan_state_ {StartScan::scan_off};
 
     //detector settings
-    uint64_t det_xray_window_ms_ {1000};
+    uint16_t det_xray_window_ms_ {1000};
     uint64_t det_integration_time_ {};
     float    det_battery_voltage_ {};
     uint8_t  det_battery_ext_pow_ {};

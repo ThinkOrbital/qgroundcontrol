@@ -33,4 +33,7 @@
     <qresource prefix="/json">
         <file alias="Custom.SettingsGroup.json">src/Custom.SettingsGroup.json</file>
     </qresource>
+    <qresource prefix="/res">
+        <file alias="gear-white.svg">../resources/gear-white.svg</file>
+    </qresource>
 </RCC>

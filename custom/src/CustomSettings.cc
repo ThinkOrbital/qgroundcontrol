@@ -5,7 +5,7 @@ DECLARE_SETTINGGROUP(Custom, "Custom") {}
 
 DECLARE_SETTINGSFACT(CustomSettings, separationDistance)
 DECLARE_SETTINGSFACT(CustomSettings, bearing)
-DECLARE_SETTINGSFACT(CustomSettings, altitude)
+DECLARE_SETTINGSFACT(CustomSettings, targetAlt)
 DECLARE_SETTINGSFACT(CustomSettings, detOffset)
 DECLARE_SETTINGSFACT(CustomSettings, emAltOffset)
 DECLARE_SETTINGSFACT(CustomSettings, flightAlt)
@@ -15,3 +15,4 @@ DECLARE_SETTINGSFACT(CustomSettings, goalLon)
 DECLARE_SETTINGSFACT(CustomSettings, numImages)
 DECLARE_SETTINGSFACT(CustomSettings, fileName)
 DECLARE_SETTINGSFACT(CustomSettings, detectorXrayWindow)
+DECLARE_SETTINGSFACT(CustomSettings, overlap)
