@@ -842,14 +842,14 @@ Item {
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.6) : qgcPal.buttonBorder)
                 }
             }
-            
-            QGCButton {
+
+            QGCDelayButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Start Mission"
-                onClicked: backend.startMission()
+                onActivated: backend.startMission()
                 enabled: backend.isStartMissionButtonEn && _vehiclesReadyForMission
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.3) : qgcPal.button)
@@ -857,18 +857,18 @@ Item {
                 }
             }
 
-            QGCButton {
+            QGCDelayButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "End Mission"
-                onClicked: backend.endMission()
+                onActivated: backend.endMission()
                 enabled: backend.isEndMissionButtonEn
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.3) : qgcPal.button)
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.6) : qgcPal.buttonBorder)
-                }           
+                }
             }
         }
     }
