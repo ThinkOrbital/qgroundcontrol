@@ -1,12 +1,17 @@
 #include "AsyncFunctionStateTest.h"
 #include "StateTestCommon.h"
 
+#include <QtCore/QRegularExpression>
+
 
 void AsyncFunctionStateTest::_testAsyncFunctionState()
 {
     QStateMachine machine;
     bool setupCalled = false;
     AsyncFunctionState* capturedState = nullptr;
+
+    // Expected: async state has no completion connection and no timeout
+    expectLogMessage("Utilities.QGCStateMachine", QtCriticalMsg, QRegularExpression("has no completion connection"));
 
     auto* asyncState = new AsyncFunctionState(
         QStringLiteral("TestAsync"),
@@ -19,15 +24,8 @@ void AsyncFunctionStateTest::_testAsyncFunctionState()
             });
         }
     );
-    auto* finalState = new QFinalState(&machine);
-
-    asyncState->addTransition(asyncState, &QGCState::advance, finalState);
-    machine.setInitialState(asyncState);
-
-    QSignalSpy finishedSpy(&machine, &QStateMachine::finished);
-    machine.start();
-
-    QVERIFY(finishedSpy.wait(500));
+    QVERIFY(runStateToCompletion(asyncState, &machine));
+    verifyExpectedLogMessage();
     QVERIFY(setupCalled);
     QVERIFY(capturedState != nullptr);
 }
@@ -64,17 +62,20 @@ void AsyncFunctionStateTest::_testAsyncFunctionStateTimeout()
     QSignalSpy finishedSpy(&machine, &QStateMachine::finished);
     machine.start();
 
-    QVERIFY(finishedSpy.wait(500));
+    QVERIFY(finishedSpy.wait(TestTimeout::shortMs()));
     QVERIFY(timeoutReached);
     // Verify timeout path taken, not success path
-    QVERIFY(stateSpy.emittedByMask(stateSpy.mask("timeout")));
-    QVERIFY(stateSpy.notEmittedByMask(stateSpy.mask("advance")));
+    QVERIFY(stateSpy.emitted("timeout"));
+    QVERIFY(stateSpy.notEmitted("advance"));
 }
 
 void AsyncFunctionStateTest::_testErrorTransition()
 {
     QStateMachine machine;
     bool errorHandled = false;
+
+    // Expected: async state has no completion connection and no timeout
+    expectLogMessage("Utilities.QGCStateMachine", QtCriticalMsg, QRegularExpression("has no completion connection"));
 
     auto* asyncState = new AsyncFunctionState(
         QStringLiteral("TestError"),
@@ -102,11 +103,12 @@ void AsyncFunctionStateTest::_testErrorTransition()
     QSignalSpy finishedSpy(&machine, &QStateMachine::finished);
     machine.start();
 
-    QVERIFY(finishedSpy.wait(500));
+    QVERIFY(finishedSpy.wait(TestTimeout::shortMs()));
+    verifyExpectedLogMessage();
     QVERIFY(errorHandled);
     // Verify error path taken, not success path
-    QVERIFY(stateSpy.emittedByMask(stateSpy.mask("error")));
-    QVERIFY(stateSpy.notEmittedByMask(stateSpy.mask("advance")));
+    QVERIFY(stateSpy.emitted("error"));
+    QVERIFY(stateSpy.notEmitted("advance"));
 }
 
 UT_REGISTER_TEST(AsyncFunctionStateTest, TestLabel::Unit, TestLabel::Utilities)

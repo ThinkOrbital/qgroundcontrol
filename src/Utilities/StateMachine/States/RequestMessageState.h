@@ -1,17 +1,23 @@
 #pragma once
 
 #include "WaitStateBase.h"
-#include "Vehicle.h"
+#include "MAVLinkEnums.h"
+#include "MAVLinkMessageType.h"
+#include "VehicleTypes.h"
+
+class Vehicle;
 
 #include <cstdint>
 #include <functional>
 
-/// Requests a MAVLink message from the vehicle using MAV_CMD_REQUEST_MESSAGE.
+/// \brief Requests a MAVLink message from the vehicle using MAV_CMD_REQUEST_MESSAGE.
+///
 /// Emits messageReceived() with the decoded message on success.
 /// Emits completed()/advance() on success, timeout()/timedOut() on timeout, error() on failure.
 ///
 /// Note: Vehicle::requestMessage() has its own internal timeout, but this state
 /// adds an additional safety timeout at the state machine level.
+///
 class RequestMessageState : public WaitStateBase
 {
     Q_OBJECT
@@ -38,7 +44,7 @@ public:
                         float param5 = 0.0f);
 
     /// @return The failure code from the last request attempt
-    Vehicle::RequestMessageResultHandlerFailureCode_t failureCode() const { return _failureCode; }
+    VehicleTypes::RequestMessageResultHandlerFailureCode_t failureCode() const { return _failureCode; }
 
     /// @return The MAV_RESULT from the last request attempt
     MAV_RESULT commandResult() const { return _commandResult; }
@@ -56,7 +62,7 @@ protected:
 private:
     static void _resultHandler(void* resultHandlerData,
                                MAV_RESULT commandResult,
-                               Vehicle::RequestMessageResultHandlerFailureCode_t failureCode,
+                               VehicleTypes::RequestMessageResultHandlerFailureCode_t failureCode,
                                const mavlink_message_t& message);
 
     uint32_t        _messageId;
@@ -68,6 +74,6 @@ private:
     float           _param4;
     float           _param5;
 
-    Vehicle::RequestMessageResultHandlerFailureCode_t _failureCode = Vehicle::RequestMessageNoFailure;
+    VehicleTypes::RequestMessageResultHandlerFailureCode_t _failureCode = VehicleTypes::RequestMessageNoFailure;
     MAV_RESULT _commandResult = MAV_RESULT_ACCEPTED;
 };

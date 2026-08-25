@@ -20,9 +20,18 @@ private slots:
     void cleanup() override;
 
     void _testLoadJsonSectionAvailable();
-    void _testGlobalAltMode();
+    void _testGlobalAltFrame();
     void _testGimbalRecalc();
     void _testVehicleYawRecalc();
+    void _testMissionReposition();
+    void _testMissionOffset();
+    void _testMissionRotate();
+    void _testMissionTransformsInvalidHome();
+    void _testLoadPlanRoundTripComplexItems();
+    void _testInsertSurveyAppliesAltFrameInMixedMode();
+    void _testInsertNonSurveyComplexItemMixedModeNoCrash();
+    void _testInsertComplexItemFromKML();
+    void _testInsertValidityHomePositionGating();
 
     // Parameterized tests - runs once per autopilot type
     UT_PARAMETERIZED_TEST(_testEmptyVehicle);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <QtPositioning/QGeoCoordinate>
 
 #include "TransectStyleComplexItemTestBase.h"
@@ -27,6 +29,7 @@ private slots:
     void _testItemGeneration();
     void _testItemCount();
     void _testHoverCaptureItemGeneration();
+    void _testMaxTransectCount();
 
 private:
     double _clampGridAngle180(double gridAngle);
@@ -34,7 +37,7 @@ private:
     void _testItemGenerationWorker(bool imagesInTurnaround, bool hasTurnaround, bool useConditionGate,
                                    const QList<MAV_CMD>& expectedCommands);
 
-    MultiSignalSpy* _multiSpy = nullptr;
+    std::unique_ptr<MultiSignalSpy> _multiSpy;
     SurveyComplexItem* _surveyItem = nullptr;
     QGCMapPolygon* _mapPolygon = nullptr;
     QList<QGeoCoordinate> _polyVertices;

@@ -6,7 +6,6 @@
 class MultiSignalSpy;
 class QGCMapPolyline;
 class QmlObjectListModel;
-class QTemporaryDir;
 
 class QGCMapPolylineTest : public UnitTest
 {
@@ -23,7 +22,7 @@ private slots:
     void _testSelectVertex();
 
 private:
-    QString _copyRes(const QTemporaryDir& tmpDir, const QString& name);
+    QString _copyRes(const QString& dirPath, const QString& name);
 
     MultiSignalSpy* _multiSpyPolyline = nullptr;
     MultiSignalSpy* _multiSpyModel = nullptr;

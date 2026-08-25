@@ -6,11 +6,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import time
 from typing import Any
-from urllib import error as urllib_error
-from urllib import parse as urllib_parse
-from urllib import request as urllib_request
 
 
 def gh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -23,128 +19,27 @@ def gh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     )
 
 
-def _github_token() -> str:
-    return os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+def _paginate_items(path: str, item_key: str, params: dict[str, str]) -> list[dict[str, Any]]:
+    """Fetch all pages of a GitHub list endpoint and return the unpacked items.
 
-
-def _should_use_http_api() -> bool:
-    mode = os.environ.get("QGC_GH_API_MODE", "").strip().lower()
-    return mode == "http" and bool(_github_token())
-
-
-def _extract_next_link(link_header: str) -> str:
-    for part in link_header.split(","):
-        section = part.strip()
-        if 'rel="next"' not in section:
-            continue
-        start = section.find("<")
-        end = section.find(">", start + 1)
-        if start != -1 and end != -1:
-            return section[start + 1:end]
-    return ""
-
-
-def _http_get_json(url: str, headers: dict[str, str], retries: int = 3) -> tuple[dict[str, Any], str]:
-    for attempt in range(1, retries + 1):
-        req = urllib_request.Request(url, headers=headers, method="GET")
-        try:
-            with urllib_request.urlopen(req, timeout=30) as resp:
-                payload = resp.read().decode("utf-8")
-                doc = json.loads(payload)
-                if not isinstance(doc, dict):
-                    raise ValueError(f"Unexpected non-object response from GitHub API at {url}")
-                next_url = _extract_next_link(resp.headers.get("Link", ""))
-                return doc, next_url
-        except urllib_error.HTTPError as exc:
-            if attempt < retries and exc.code in {429, 500, 502, 503, 504}:
-                time.sleep(attempt)
-                continue
-            raise RuntimeError(f"GitHub API request failed ({exc.code}) for {url}: {exc.reason}") from exc
-        except (urllib_error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as exc:
-            if attempt < retries:
-                time.sleep(attempt)
-                continue
-            raise RuntimeError(f"GitHub API request failed for {url}: {exc}") from exc
-
-    raise RuntimeError(f"GitHub API request failed for {url}: exhausted retries")
-
-
-def _http_paginated_docs(path: str, params: dict[str, str]) -> list[dict[str, Any]]:
-    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "qgc-ci-gh-actions/1.0",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "Authorization": f"Bearer {_github_token()}",
-    }
-
-    query = urllib_parse.urlencode(params)
-    url = f"{base_url}/{path.lstrip('/')}"
-    if query:
-        url = f"{url}?{query}"
-
-    docs: list[dict[str, Any]] = []
-    while url:
-        doc, next_url = _http_get_json(url, headers=headers)
-        docs.append(doc)
-        url = next_url
-    return docs
-
-
-def parse_json_documents(stdout: str) -> list[dict[str, Any]]:
-    """Parse one or more concatenated JSON documents."""
-    docs: list[dict[str, Any]] = []
-    decoder = json.JSONDecoder()
-    index = 0
-    length = len(stdout)
-
-    while index < length:
-        while index < length and stdout[index].isspace():
-            index += 1
-        if index >= length:
-            break
-        try:
-            value, next_index = decoder.raw_decode(stdout, index)
-        except json.JSONDecodeError as exc:
-            snippet = stdout[index:index + 120].replace("\n", "\\n")
-            raise ValueError(f"Failed to parse GitHub API JSON output near: {snippet}") from exc
-        if isinstance(value, dict):
-            docs.append(value)
-        index = next_index
-
-    return docs
+    ``gh --paginate --jq`` applies the filter per page and streams one JSON
+    value per line (NDJSON), so the list is unpacked server-side; ``[]?``
+    tolerates pages where the key is absent.
+    """
+    cmd = ["api", "--method", "GET", "--paginate", "--jq", f".{item_key}[]?", path]
+    for key, value in params.items():
+        cmd += ["-F", f"{key}={value}"]
+    result = gh(*cmd)
+    return [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
 
 
 def list_workflow_runs_for_sha(repo: str, head_sha: str) -> list[dict[str, Any]]:
     """List workflow runs for a commit SHA across all paginated API results."""
-    if _should_use_http_api():
-        docs = _http_paginated_docs(
-            f"repos/{repo}/actions/runs",
-            {
-                "head_sha": head_sha,
-                "per_page": "100",
-            },
-        )
-    else:
-        result = gh(
-            "api",
-            "--method",
-            "GET",
-            "--paginate",
-            f"repos/{repo}/actions/runs",
-            "-F",
-            f"head_sha={head_sha}",
-            "-F",
-            "per_page=100",
-        )
-        docs = parse_json_documents(result.stdout)
-
-    runs: list[dict[str, Any]] = []
-    for doc in docs:
-        items = doc.get("workflow_runs", [])
-        if isinstance(items, list):
-            runs.extend(item for item in items if isinstance(item, dict))
-    return runs
+    return _paginate_items(
+        f"repos/{repo}/actions/runs",
+        "workflow_runs",
+        {"head_sha": head_sha, "per_page": "100"},
+    )
 
 
 def list_run_artifacts(repo: str, run_id: int | str) -> list[dict[str, Any]]:
@@ -156,28 +51,97 @@ def list_run_artifacts(repo: str, run_id: int | str) -> list[dict[str, Any]]:
     if run_id_int <= 0:
         raise ValueError(f"run_id must be positive, got {run_id_int}")
 
-    if _should_use_http_api():
-        docs = _http_paginated_docs(
-            f"repos/{repo}/actions/runs/{run_id_int}/artifacts",
-            {
-                "per_page": "100",
-            },
-        )
-    else:
-        result = gh(
-            "api",
-            "--method",
-            "GET",
-            "--paginate",
-            f"repos/{repo}/actions/runs/{run_id_int}/artifacts",
-            "-F",
-            "per_page=100",
-        )
-        docs = parse_json_documents(result.stdout)
+    return _paginate_items(
+        f"repos/{repo}/actions/runs/{run_id_int}/artifacts",
+        "artifacts",
+        {"per_page": "100"},
+    )
 
-    artifacts: list[dict[str, Any]] = []
-    for doc in docs:
-        items = doc.get("artifacts", [])
-        if isinstance(items, list):
-            artifacts.extend(item for item in items if isinstance(item, dict))
-    return artifacts
+
+def parse_csv_list(value: str) -> list[str]:
+    """Parse comma-separated values into a trimmed non-empty list."""
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def is_fork_pr() -> bool:
+    """Check if the current event is a PR from a fork repository."""
+    event = os.environ.get("EVENT_NAME", os.environ.get("GITHUB_EVENT_NAME", ""))
+    if event != "pull_request":
+        return False
+    pr_repo = os.environ.get("PR_REPO", "").strip()
+    this_repo = os.environ.get("THIS_REPO", os.environ.get("GITHUB_REPOSITORY", "")).strip()
+    return bool(pr_repo and this_repo and pr_repo != this_repo)
+
+
+def resolve_cache_policy(requested: str) -> str:
+    """Resolve cache save policy.
+
+    "auto" only saves on non-PR events (push, schedule, workflow_dispatch).
+    PRs read from the shared cache but never write, so the 10 GB repo cap
+    isn't churned by per-PR entries. Long-lived cache state is owned by
+    push-to-default-branch builds.
+    """
+    if requested != "auto":
+        return requested
+    event = os.environ.get("EVENT_NAME", os.environ.get("GITHUB_EVENT_NAME", ""))
+    if event in {"pull_request", "pull_request_target"}:
+        return "false"
+    return "false" if is_fork_pr() else "true"
+
+
+def write_github_output(outputs: dict[str, str]) -> None:
+    """Write key=value pairs to $GITHUB_OUTPUT for GitHub Actions.
+
+    Handles multiline values using hash-based heredoc delimiters.
+    """
+    import hashlib
+
+    github_output = os.environ.get('GITHUB_OUTPUT')
+    if not github_output:
+        return
+
+    with open(github_output, 'a', encoding="utf-8") as f:
+        for key, value in outputs.items():
+            if "\n" in value:
+                value_hash = hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+                delim = f"EOF_{key}_{value_hash}"
+                while delim in value:
+                    delim = f"{delim}_X"
+                f.write(f"{key}<<{delim}\n{value}\n{delim}\n")
+            else:
+                f.write(f"{key}={value}\n")
+
+
+def write_step_summary(markdown: str) -> None:
+    """Append markdown content to $GITHUB_STEP_SUMMARY."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(markdown)
+
+
+def append_github_env(values: dict[str, str]) -> None:
+    """Append environment variables to $GITHUB_ENV."""
+    path = os.environ.get("GITHUB_ENV")
+    if not path:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        for key, value in values.items():
+            f.write(f"{key}={value}\n")
+
+
+def append_github_path(path_entry: str) -> None:
+    """Append a path entry to $GITHUB_PATH for subsequent steps."""
+    path = os.environ.get("GITHUB_PATH")
+    if not path:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(f"{path_entry}\n")
+
+
+def parse_bool(value: str | None) -> bool:
+    """Parse a CI-style boolean. Accepts 1/true/yes/on (case-insensitive)."""
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}

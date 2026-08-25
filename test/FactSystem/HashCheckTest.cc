@@ -1,7 +1,9 @@
 #include "HashCheckTest.h"
 
+#include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
+#include <QtCore/QRegularExpression>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
 
@@ -106,13 +108,9 @@ MockLink *HashCheckTest::_startPX4MockLinkHighLatency()
 // ManualRefresh:          User-triggered refreshAllParameters() bypasses _HASH_CHECK and requests full param list.
 // ArduPilot:              ArduPilot uses FTP for parameters, so no _HASH_CHECK or PARAM_REQUEST_LIST traffic.
 // HighLatency:            High-latency links skip parameter download entirely; params marked as missing.
-// LogReplay:              Log replay shares the high-latency code path; params marked as missing.
 //
 // PARAM_REQUEST_LIST (xPRL) is only asserted for PX4 vehicles; ArduPilot uses FTP.
 // missingParameters (xMiss) is only asserted when expectParametersReady (xReady) is true.
-// Scenarios 11 and 12 exercise the same code path via setHighLatency(true).
-// MockLink doesn't support isLogReplay(), so high latency serves as proxy for the
-// shared guard: if (isHighLatency || _logReplay) { signal ready immediately }.
 
 void HashCheckTest::_hashCheckMatrix_data()
 {
@@ -144,11 +142,17 @@ void HashCheckTest::_hashCheckMatrix_data()
     QTest::newRow("ManualRefresh")           << true  << false << false << false << false << false << false << true   << false << true  << true  << false;
     QTest::newRow("ArduPilot")              << false  << false << false << false << false << false << false << false  << false << false << true  << false;
     QTest::newRow("HighLatency")             << true  << true  << false << false << false << false << false << false  << false << false << true  << true;
-    QTest::newRow("LogReplay")               << true  << true  << false << false << false << false << false << false  << false << false << true  << true;
 }
 
 void HashCheckTest::_hashCheckMatrix()
 {
+    // ArduPilot and high-latency variants do not have a metadata source;
+    // the resulting warning is expected for those rows.
+    ignoreLogMessage("ComponentInformation.RequestMetaDataTypeStateMachine", QtWarningMsg,
+                     QRegularExpression("failed to load metadata"));
+    // BothTimersExhaust row: parameters never become ready, producing a showAppMessage for the timeout.
+    ignoreLogMessage("API.QGCApplication.AppMessage", QtDebugMsg,
+                     QRegularExpression("did not respond to request for parameters"));
     QFETCH(bool, px4);
     QFETCH(bool, highLatency);
     QFETCH(bool, populateCache);
@@ -187,8 +191,18 @@ void HashCheckTest::_hashCheckMatrix()
         QVERIFY(_vehicle->parameterManager()->parametersReady());
 
         _mockLink->clearReceivedMavlinkMessageCounts();
+
+        // refreshAllParameters() toggles parametersReady (false -> true) as
+        // the refresh state machine restarts and completes. Wait on the
+        // ready-transition rather than a fixed 100 ms sleep so the test
+        // advances as soon as the refresh is observable. The 100 ms ceiling
+        // matches the previous qWait bound so unexpected regressions still
+        // fail loudly.
+        QSignalSpy readySpy(_vehicle->parameterManager(),
+                            &ParameterManager::parametersReadyChanged);
         _vehicle->parameterManager()->refreshAllParameters();
-        QTest::qWait(100);
+        (void) readySpy.wait(100);
+        QCoreApplication::processEvents();
 
     } else if (highLatency) {
         _mockLink = _startPX4MockLinkHighLatency();
@@ -237,7 +251,7 @@ void HashCheckTest::_hashCheckMatrix()
         QVERIFY(vehicle);
 
         QSignalSpy spyParamsReady(vehicleMgr, &MultiVehicleManager::parameterReadyVehicleAvailableChanged);
-        const int maxWaitMs = ParameterManager::kHashCheckTimeoutMs
+        const int maxWaitMs = ParameterManager::kTestHashCheckTimeoutMs
                             + ParameterManager::kTestMaxInitialRequestTimeMs
                             + TestTimeout::shortMs();
         QVERIFY_NO_SIGNAL_WAIT(spyParamsReady, maxWaitMs);

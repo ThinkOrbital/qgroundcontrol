@@ -35,6 +35,7 @@
 #include "ProgressState.h"
 #include "RetryableRequestMessageState.h"
 #include "WaitForMavlinkMessageState.h"
+#include "WaitForParamResponseState.h"
 #include "WaitForSignalState.h"
 #include "WaitStateBase.h"
 #include "StateContext.h"
@@ -56,7 +57,8 @@ class StateMachineLogger;
 class StateMachineProfiler;
 class StateHistoryRecorder;
 
-/// QGroundControl specific state machine with enhanced error handling
+/// \brief QGroundControl specific state machine with enhanced error handling
+///
 class QGCStateMachine : public QStateMachine
 {
     Q_OBJECT

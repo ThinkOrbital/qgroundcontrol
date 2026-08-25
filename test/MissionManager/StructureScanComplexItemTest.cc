@@ -1,6 +1,7 @@
 #include "StructureScanComplexItemTest.h"
 
 #include <QtCore/QJsonArray>
+#include <QtCore/QRegularExpression>
 
 #include "CoordFixtures.h"
 #include "MultiSignalSpy.h"
@@ -19,16 +20,15 @@ void StructureScanComplexItemTest::init()
     OfflineMissionTest::init();
     _structureScanItem = new StructureScanComplexItem(planController(), false /* flyView */, QString() /* kmlFile */);
     _structureScanItem->setDirty(false);
-    _multiSpy = new MultiSignalSpy();
+    _multiSpy = std::make_unique<MultiSignalSpy>();
     QVERIFY(_multiSpy);
     QCOMPARE(_multiSpy->init(_structureScanItem), true);
 }
 
 void StructureScanComplexItemTest::cleanup()
 {
-    delete _multiSpy;
+    _multiSpy.reset();
     _structureScanItem = nullptr;  // Deleted when planController is deleted
-    _multiSpy = nullptr;
     OfflineMissionTest::cleanup();
 }
 
@@ -52,7 +52,7 @@ void StructureScanComplexItemTest::_testDirty()
     QList<Fact*> rgFacts;
     rgFacts << _structureScanItem->entranceAlt() << _structureScanItem->layers();
     for (Fact* fact : rgFacts) {
-        qDebug() << fact->name();
+        qCDebug(UnitTestLog) << fact->name();
         QVERIFY(!_structureScanItem->dirty());
         if (fact->typeIsBool()) {
             fact->setRawValue(!fact->rawValue().toBool());
@@ -109,6 +109,7 @@ void StructureScanComplexItemTest::_testSaveLoad()
 void StructureScanComplexItemTest::_testItemCount()
 {
     QList<MissionItem*> items;
+    ignoreLogMessage("QMLControls.QGCMapPolygon", QtWarningMsg, QRegularExpression("bad vertex requested"));
     _initItem();
     _structureScanItem->appendMissionItems(items, this);
     QCOMPARE(items.count() - 1, _structureScanItem->lastSequenceNumber());

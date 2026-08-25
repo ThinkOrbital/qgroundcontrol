@@ -5,8 +5,7 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
-
-#include <limits>
+#include <QtCore/QThread>
 
 #include <osmium/handler.hpp>
 #include <osmium/io/reader.hpp>
@@ -14,7 +13,9 @@
 #include <osmium/visitor.hpp>
 
 #include <cmath>
+#include <exception>
 #include <limits>
+#include <utility>
 
 QGC_LOGGING_CATEGORY(OsmParserThreadLog, "Viewer3d.OsmParserThread")
 
@@ -214,8 +215,8 @@ void OsmParserThread::BuildingType_t::append(const std::vector<QVector2D> &newPo
 // OsmParserThread
 // ============================================================================
 
-OsmParserThread::OsmParserThread(QObject *parent)
-    : QObject{parent}
+OsmParserThread::OsmParserThread(QObject * /*parent*/)
+    : QObject{nullptr}
     , _workerThread(new QThread())
 {
     connect(this, &OsmParserThread::startThread, this, &OsmParserThread::_parseOsmFile);

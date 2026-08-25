@@ -6,6 +6,7 @@
 # IDEs & Editors
 # ------------------------------------------------------------------------------
 .idea/
+.qt/
 .qtcreator/
 .fleet/
 .vs/
@@ -27,8 +28,7 @@ tags
 # Build System & CMake
 # ------------------------------------------------------------------------------
 build*/
-!.github/actions/build-setup/
-!.github/actions/build-setup/action.yml
+!.github/actions/build*/
 cmake-build-*/
 out/
 CMakeFiles
@@ -38,6 +38,9 @@ compile_commands.json
 cpm_modules
 .cache/
 .ccache/
+
+# CTest working files created in the source tree when tests run
+Testing/
 
 # ------------------------------------------------------------------------------
 # Qt Generated Files
@@ -79,7 +82,6 @@ bin/mac
 *.dll
 
 # Build tool artifacts
-Makefile
 *.ninja
 .ninja_log
 build.ninja
@@ -160,15 +162,21 @@ Qt*-linux*.tar.*
 
 # AI Assistants
 .claude/
-.claudeignore
+.gemini/
 .geminiignore
 .cursorignore
-**/CLAUDE.md
 
-# Pre-commit hooks
+# Python tooling caches
 .ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+.venv/
 
 # Vale prose linter (downloaded via `vale sync`)
 .github/styles/
-.gemini/
-.pytest_cache/
+
+# direnv / version managers
+.envrc
+.direnv/
+.tool-versions
+.python-version

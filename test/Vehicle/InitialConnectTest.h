@@ -16,6 +16,8 @@ private slots:
     void _genericAutopilotVersionFailureSkipsUnsupportedPlanTypes();
     void _multipleReconnects();
     void _rallyTimeoutPathDoesNotLeakCompletionHandler();
+    void _stateTimeoutFallsThrough_data();
+    void _stateTimeoutFallsThrough();
     void _stateRunMatrix_data();
     void _stateRunMatrix();
 };

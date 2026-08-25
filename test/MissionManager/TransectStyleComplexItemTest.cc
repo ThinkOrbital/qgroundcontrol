@@ -14,14 +14,13 @@ void TransectStyleComplexItemTest::init()
     _transectStyleItem->cameraCalc()->valueSetIsDistance()->setRawValue(true);
     _transectStyleItem->cameraCalc()->distanceToSurface()->setRawValue(100);
     _transectStyleItem->setDirty(false);
-    _multiSpy = new MultiSignalSpy;
+    _multiSpy = std::make_unique<MultiSignalSpy>();
     QVERIFY(_multiSpy->init(_transectStyleItem));
 }
 
 void TransectStyleComplexItemTest::cleanup()
 {
-    delete _multiSpy;
-    _multiSpy = nullptr;
+    _multiSpy.reset();
     TransectStyleComplexItemTestBase::cleanup();
     // These items are deleted when planController() is deleted
     _transectStyleItem = nullptr;
@@ -47,7 +46,7 @@ void TransectStyleComplexItemTest::_testDirty()
     rgFacts << _transectStyleItem->turnAroundDistance() << _transectStyleItem->cameraTriggerInTurnAround()
             << _transectStyleItem->hoverAndCapture() << _transectStyleItem->refly90Degrees();
     for (Fact* fact : rgFacts) {
-        qDebug() << fact->name();
+        qCDebug(UnitTestLog) << fact->name();
         QVERIFY(!_transectStyleItem->dirty());
         changeFactValue(fact);
         QVERIFY(_multiSpy->emittedOnce("dirtyChanged"));
@@ -77,7 +76,7 @@ void TransectStyleComplexItemTest::_testRebuildTransects()
     _transectStyleItem->adjustSurveAreaPolygon();
     QVERIFY_TRUE_WAIT(_transectStyleItem->rebuildTransectsPhase1Called, TestTimeout::mediumMs());
     QVERIFY_TRUE_WAIT(_transectStyleItem->recalcCameraShotsCalled, TestTimeout::mediumMs());
-    QVERIFY_TRUE_WAIT(_multiSpy->emittedByMask(_multiSpy->mask("coveredAreaChanged", "lastSequenceNumberChanged")),
+    QVERIFY_TRUE_WAIT(_multiSpy->emitted("coveredAreaChanged", "lastSequenceNumberChanged"),
                       TestTimeout::mediumMs());
     _transectStyleItem->rebuildTransectsPhase1Called = false;
     _transectStyleItem->recalcCameraShotsCalled = false;
@@ -92,7 +91,7 @@ void TransectStyleComplexItemTest::_testRebuildTransects()
             << _transectStyleItem->hoverAndCapture() << _transectStyleItem->refly90Degrees()
             << _transectStyleItem->cameraCalc()->frontalOverlap() << _transectStyleItem->cameraCalc()->sideOverlap();
     for (Fact* fact : rgFacts) {
-        qDebug() << fact->name();
+        qCDebug(UnitTestLog) << fact->name();
         changeFactValue(fact);
         QVERIFY(_transectStyleItem->rebuildTransectsPhase1Called);
         QVERIFY(_transectStyleItem->recalcCameraShotsCalled);
@@ -127,7 +126,7 @@ void TransectStyleComplexItemTest::_testRebuildTransects()
 void TransectStyleComplexItemTest::_testDistanceSignalling()
 {
     _transectStyleItem->adjustSurveAreaPolygon();
-    QVERIFY_TRUE_WAIT(_multiSpy->emittedByMask(_multiSpy->mask("complexDistanceChanged", "greatestDistanceToChanged")),
+    QVERIFY_TRUE_WAIT(_multiSpy->emitted("complexDistanceChanged", "greatestDistanceToChanged"),
                       TestTimeout::mediumMs());
     _transectStyleItem->setDirty(false);
     _multiSpy->clearAllSignals();
@@ -135,9 +134,9 @@ void TransectStyleComplexItemTest::_testDistanceSignalling()
     rgFacts << _transectStyleItem->turnAroundDistance() << _transectStyleItem->hoverAndCapture()
             << _transectStyleItem->refly90Degrees();
     for (Fact* fact : rgFacts) {
-        qDebug() << fact->name();
+        qCDebug(UnitTestLog) << fact->name();
         changeFactValue(fact);
-        QVERIFY(_multiSpy->emittedByMask(_multiSpy->mask("complexDistanceChanged", "greatestDistanceToChanged")));
+        QVERIFY(_multiSpy->emitted("complexDistanceChanged", "greatestDistanceToChanged"));
         _transectStyleItem->setDirty(false);
         _multiSpy->clearAllSignals();
     }
@@ -149,12 +148,12 @@ void TransectStyleComplexItemTest::_testAltitudes()
     _transectStyleItem->cameraCalc()->distanceToSurface()->setRawValue(50);
     _transectStyleItem->cameraCalc()->adjustedFootprintFrontal()->setRawValue(10);
     _transectStyleItem->cameraCalc()->adjustedFootprintSide()->setRawValue(10);
-    qDebug() << _transectStyleItem->_transectCount();
+    qCDebug(UnitTestLog) << _transectStyleItem->_transectCount();
     QList<MissionItem*> rgItems;
     _transectStyleItem->appendMissionItems(rgItems, this);
     for (const MissionItem* missionItem : rgItems) {
         if (missionItem->command() == MAV_CMD_NAV_WAYPOINT) {
-            qDebug() << missionItem->param7();
+            qCDebug(UnitTestLog) << missionItem->param7();
         }
     }
 }

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import collect_artifact_sizes as mod
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _run(
@@ -15,6 +18,7 @@ def _run(
     created_at: str = "2026-02-24T00:00:00Z",
     status: str = "completed",
     conclusion: str = "success",
+    event: str = "pull_request",
 ) -> dict[str, object]:
     return {
         "id": run_id,
@@ -22,6 +26,7 @@ def _run(
         "created_at": created_at,
         "status": status,
         "conclusion": conclusion,
+        "event": event,
     }
 
 
@@ -35,7 +40,9 @@ def test_latest_successful_runs_picks_latest_success_per_platform() -> None:
         _run("Other", run_id=5),
     ]
 
-    latest = mod.latest_successful_runs(runs, platforms)
+    latest = mod.select_latest_runs_by_name(
+        runs, set(platforms), status="completed", conclusion="success"
+    )
     assert latest["Linux"]["id"] == 2
     assert latest["Windows"]["id"] == 4
 
@@ -47,8 +54,23 @@ def test_latest_successful_runs_handles_iso8601_offsets() -> None:
         _run("Linux", run_id=2, created_at="2026-02-24T01:00:00Z"),
     ]
 
-    latest = mod.latest_successful_runs(runs, platforms)
+    latest = mod.select_latest_runs_by_name(
+        runs, set(platforms), status="completed", conclusion="success"
+    )
     assert latest["Linux"]["id"] == 2
+
+
+def test_latest_successful_runs_filters_by_event() -> None:
+    platforms = ["Linux"]
+    runs = [
+        _run("Linux", run_id=1, created_at="2026-02-24T00:00:00Z", event="pull_request"),
+        _run("Linux", run_id=2, created_at="2026-02-24T01:00:00Z", event="push"),
+    ]
+
+    latest = mod.select_latest_runs_by_name(
+        runs, set(platforms), event="pull_request", status="completed", conclusion="success"
+    )
+    assert latest["Linux"]["id"] == 1
 
 
 def test_collect_artifacts_filters_non_product_artifacts() -> None:
@@ -143,7 +165,9 @@ def test_collect_artifacts_uses_prefetched_artifact_metadata() -> None:
     }
 
     def fail_list_run_artifacts(repo: str, run_id: int) -> list[dict[str, object]]:
-        raise AssertionError("list_run_artifacts should not be called when prefetched metadata is provided")
+        raise AssertionError(
+            "list_run_artifacts should not be called when prefetched metadata is provided"
+        )
 
     original = mod.list_run_artifacts
     mod.list_run_artifacts = fail_list_run_artifacts  # type: ignore[assignment]
@@ -210,7 +234,7 @@ def test_main_writes_output_json(tmp_path: Path, monkeypatch) -> None:
             return [{"name": "QGroundControl-x86_64", "size_in_bytes": 2 * 1024 * 1024}]
         return [{"name": "QGroundControl-installer-AMD64", "size_in_bytes": 2 * 1024 * 1024}]
 
-    monkeypatch.setattr(mod, "list_workflow_runs", fake_list_workflow_runs)
+    monkeypatch.setattr(mod, "list_workflow_runs_for_sha", fake_list_workflow_runs)
     monkeypatch.setattr(mod, "list_run_artifacts", fake_list_run_artifacts)
 
     rc = mod.main(
@@ -256,9 +280,11 @@ def test_main_reads_artifacts_file_when_provided(tmp_path: Path, monkeypatch) ->
         return runs
 
     def fail_list_run_artifacts(repo: str, run_id: int) -> list[dict[str, object]]:
-        raise AssertionError("list_run_artifacts should not be called when artifacts file is provided")
+        raise AssertionError(
+            "list_run_artifacts should not be called when artifacts file is provided"
+        )
 
-    monkeypatch.setattr(mod, "list_workflow_runs", fake_list_workflow_runs)
+    monkeypatch.setattr(mod, "list_workflow_runs_for_sha", fake_list_workflow_runs)
     monkeypatch.setattr(mod, "list_run_artifacts", fail_list_run_artifacts)
 
     rc = mod.main(
@@ -279,6 +305,33 @@ def test_main_reads_artifacts_file_when_provided(tmp_path: Path, monkeypatch) ->
     data = json.loads(output_file.read_text(encoding="utf-8"))
     assert len(data["artifacts"]) == 1
     assert data["artifacts"][0]["name"] == "QGroundControl-x86_64"
+
+
+def test_collect_artifacts_deduplicates_same_name_keeps_largest() -> None:
+    """When multiple workflows produce artifacts with the same name, keep the largest."""
+    latest = {
+        "MacOS": {"id": 61},
+        "Android": {"id": 62},
+    }
+    prefetched = {
+        61: [
+            {"name": "QGroundControl", "size_in_bytes": 337 * 1024 * 1024},
+        ],
+        62: [
+            {"name": "QGroundControl", "size_in_bytes": 247 * 1024 * 1024},
+        ],
+    }
+
+    artifacts = mod.collect_artifacts(
+        "owner/repo",
+        latest,
+        ["MacOS", "Android"],
+        artifacts_by_run_id=prefetched,
+    )
+
+    assert len(artifacts) == 1
+    assert artifacts[0]["name"] == "QGroundControl"
+    assert artifacts[0]["size_bytes"] == 337 * 1024 * 1024
 
 
 def test_main_returns_one_on_invalid_runs_file(tmp_path: Path) -> None:

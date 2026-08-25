@@ -3,6 +3,8 @@
 #include <QMetaObject>
 #include <QGeoCoordinate>
 #include <QtMath>
+#include "QmlObjectListModel.h"
+#include "VehicleLinkManager.h"
 
 #include "Comms/MAVLinkProtocol.h"
 
@@ -43,7 +45,7 @@ BackendController::BackendController(QObject *parent)
             this, &BackendController::_vehicleRemoved);
 
     // Register any vehicles already connected at startup
-    QmlObjectListModel* vehicles = mgr->vehicles();
+    auto vehicles = mgr->vehicles();
     for (int i = 0; i < vehicles->count(); i++) {
         Vehicle* v = qobject_cast<Vehicle*>(vehicles->get(i));
         if (v) _vehicleAdded(v);
@@ -341,7 +343,7 @@ void BackendController::processTelemetryUpdates()
             if(elapsed_time >= std::chrono::seconds(1))
             {   
                 //resend target message
-                this->sendGoal();
+                this->sendCenterGoal();
                 qDebug() << "Resend target message";
             }
         }
@@ -428,8 +430,8 @@ void BackendController::processTelemetryUpdates()
                             if(targMsgSent_ && calMsgSent_)
                             {
                                 str_flight_status = "Waiting for user to press start mission button.";
-                                qDebug() << "Start Mission Button should be enabled";
                                 this->setStartMissionButtonEn(true);
+                                
                             }
 
                             if(!targMsgSent_)
@@ -602,6 +604,21 @@ void BackendController::processTelemetryUpdates()
                         break;
                     }
 
+                    case FlightState::linear_scan:
+                    {
+                        if((this->flight_state_map_[SYSID_EMITTER] == FlightState::linear_scan) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::linear_scan))
+                        {
+                            this->setStartMissionButtonEn(false);
+                            this->setResumeMissionButtonEn(false);
+                            this->setStartScanButtonEn(false);
+                            this->setSendGoalButtonEn(false);
+                            this->setStopScanButtonEn(true);
+                            this->setEndMissionButtonEn(true);
+                            this->setFlightStatus("Performing X-Ray Scan...");
+                        }
+                        break;
+                    }
+
                     case FlightState::operator_input: //operator input state
                     {
                         if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
@@ -680,7 +697,7 @@ void BackendController::processTelemetryUpdates()
                         this->setSendGoalButtonEn(false);
                         this->setStartMissionButtonEn(false);
                         this->setStopScanButtonEn(false);
-                        this->setEndMissionButtonEn(false);
+                        this->setEndMissionButtonEn(true);
                         break;
                     }
                 }
@@ -750,10 +767,7 @@ void BackendController::processTelemetryUpdates()
 void BackendController::nudge(const double azimuth, const double distance)
 {
     QGeoCoordinate newCoord = center_coordinate_.atDistanceAndAzimuth(distance, azimuth);
-    center_coordinate_ = newCoord;
-    emit centerCoordinateChanged();
-    emit emitterGoalCoordChanged();
-    emit detectorGoalCoordChanged();
+    setCenterCoordinate(newCoord);
 }
 
 void BackendController::setScanMissionMode(const bool mode)
@@ -771,6 +785,30 @@ void BackendController::setCenterCoordinate(const QGeoCoordinate &coord)
         emit centerCoordinateChanged();
         emit emitterGoalCoordChanged();
         emit detectorGoalCoordChanged();
+    }
+}
+
+void BackendController::setStartCoordinate(const QGeoCoordinate &coord)
+{
+    if (start_coordinate_ != coord) {
+        start_coordinate_ = coord;
+        emit startCoordinateChanged();
+    }
+}
+
+void BackendController::setEndCoordinate(const QGeoCoordinate &coord)
+{
+    if (end_coordinate_ != coord) {
+        end_coordinate_ = coord;
+        emit endCoordinateChanged();
+    }
+}
+
+void BackendController::setOverlap(const uint8_t overlap)
+{
+    if (overlap_ != overlap) {
+        overlap_ = overlap;
+        emit overlapChanged();
     }
 }
 
@@ -794,11 +832,11 @@ void BackendController::setBearing(const double bearing)
     }
 }
 
-void BackendController::setAltitude(const double altitude)
+void BackendController::setTargetAlt(const double altitude)
 {
-    if (altitude_ != altitude) {
-        altitude_ = altitude;
-        emit altitudeChanged();
+    if (target_alt_ != altitude) {
+        target_alt_ = altitude;
+        emit targetAltChanged();
     }
 }
 
@@ -893,52 +931,33 @@ void BackendController::setEndMissionButtonEn(const bool enabled)
     }
 }
 
-void BackendController::sendGoal()
+void BackendController::sendCenterGoal()
 {
-    // qDebug() << "Send Goal Button Pressed!";
-
-     // fill out the message
-    double lat_int, lat_frac, lon_int, lon_frac;
-    lat_frac = modf(centerCoordinate().latitude(), &lat_int);
-    lon_frac = modf(centerCoordinate().longitude(), &lon_int);
-
+    qDebug() << "Sending center goal";
     mavlink_cooperative_target_definition_t msg = {};
-    msg.lat_int      = static_cast<int32_t>(centerCoordinate().latitude());
-    msg.lon_int      = static_cast<int32_t>(centerCoordinate().longitude());
-    msg.lat_frac     = static_cast<int32_t>(lat_frac * 1e8);
-    msg.lon_frac     = static_cast<int32_t>(lon_frac * 1e8);
-    msg.altitude     = static_cast<float>(this->altitude_);
-    msg.separation   = this->sep_distance_;
-    msg.angle        = static_cast<uint32_t>(bearing_);
-    msg.detOffset    = this->detOffset_;
-    msg.emAltOffset  = this->emAltOffset_;
-    msg.flightAlt    = this->flight_alt_;
-    msg.flightVel    = this->flight_vel_;
+    msg.center_lat = static_cast<int32_t>(centerCoordinate().latitude() * 1e7);
+    msg.center_lon = static_cast<int32_t>(centerCoordinate().longitude()* 1e7);
+    msg.start_lat = 0;
+    msg.start_lon = 0;
+    msg.end_lat = 0;
+    msg.end_lon = 0;
+    msg.angle = static_cast<uint32_t>(bearing_);
+    sendGoal(msg);
+}
 
-    MultiVehicleManager* mgr = MultiVehicleManager::instance();
-    for (int i = 0; i < mgr->vehicles()->count(); i++) {
-        
-        Vehicle* vehicle = mgr->vehicles()->value<Vehicle*>(i);
-        if (!vehicle) continue;
-
-        SharedLinkInterfacePtr sharedLink = vehicle->vehicleLinkManager()->primaryLink().lock();
-        if (!sharedLink) continue;
-
-        mavlink_message_t mavMsg;
-        mavlink_msg_cooperative_target_definition_encode_chan(
-            static_cast<uint8_t>(MAVLinkProtocol::instance()->getSystemId()),
-            static_cast<uint8_t>(MAVLinkProtocol::getComponentId()),
-            sharedLink->mavlinkChannel(),
-            &mavMsg,
-            &msg
-        );
-        qDebug() << "Sending target message to system id " << vehicle->id();
-
-        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
-        this->sent_targ_msg_ = true;
-        this->targ_msg_time_ = std::chrono::steady_clock::now();
-        break; //send only one message out as it's going to both mavlink-routers on port 50882
-    }
+void BackendController::sendLinearScanGoal()
+{
+    qDebug() << "Sending linear scan goal";
+    mavlink_cooperative_target_definition_t msg = {};
+    msg.center_lat = 0;
+    msg.center_lon = 0;
+    msg.start_lat = static_cast<int32_t>(startCoordinate().latitude() * 1e7);
+    msg.start_lon = static_cast<int32_t>(startCoordinate().longitude() * 1e7);
+    msg.end_lat = static_cast<int32_t>(endCoordinate().latitude() * 1e7);
+    msg.end_lon = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
+    msg.angle = 0; // TODO support switching between 0 and 180
+    msg.percOverlap = overlap();
+    sendGoal(msg);
 }
 
 //To make sendStartScanMission robust, we need to make sure each UAV 
@@ -1159,7 +1178,7 @@ void BackendController::setCommTimeout(const uint32_t commTimeout)
     }
 }
 
-void BackendController::setXrayWindow(const uint64_t xrayWindow)
+void BackendController::setXrayWindow(const uint16_t xrayWindow)
 {
     if(this->det_xray_window_ms_ != xrayWindow)
     {
@@ -1227,4 +1246,38 @@ void  BackendController::toggleNudgeMode()
 {
     qDebug() << "Toggle Nudge Mode Pressed";
     setNudgeMode(this->nudge_mode_ == 0 ? 1 : 0);
+}
+
+void BackendController::sendGoal(mavlink_cooperative_target_definition_t& msg) {
+    msg.altitude     = static_cast<float>(this->target_alt_);
+    msg.separation   = this->sep_distance_;
+    msg.detOffset    = this->detOffset_;
+    msg.emAltOffset  = this->emAltOffset_;
+    msg.flightAlt    = this->flight_alt_;
+    msg.flightVel    = this->flight_vel_;
+
+    MultiVehicleManager* mgr = MultiVehicleManager::instance();
+    for (int i = 0; i < mgr->vehicles()->count(); i++) {
+        
+        Vehicle* vehicle = mgr->vehicles()->value<Vehicle*>(i);
+        if (!vehicle) continue;
+
+        SharedLinkInterfacePtr sharedLink = vehicle->vehicleLinkManager()->primaryLink().lock();
+        if (!sharedLink) continue;
+
+        mavlink_message_t mavMsg;
+        mavlink_msg_cooperative_target_definition_encode_chan(
+            static_cast<uint8_t>(MAVLinkProtocol::instance()->getSystemId()),
+            static_cast<uint8_t>(MAVLinkProtocol::getComponentId()),
+            sharedLink->mavlinkChannel(),
+            &mavMsg,
+            &msg
+        );
+        qDebug() << "Sending target message to system id " << vehicle->id();
+
+        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        this->sent_targ_msg_ = true;
+        this->targ_msg_time_ = std::chrono::steady_clock::now();
+        break; //send only one message out as it's going to both mavlink-routers on port 50882
+    }
 }

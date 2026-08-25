@@ -11,7 +11,7 @@ endif()
 # ----------------------------------------------------------------------------
 # CMAKE_ANDROID_NDK_VERSION format varies: "27.2" or "27.2.12829759"
 # Extract major.minor from ndk_full_version for reliable comparison
-if(DEFINED QGC_CONFIG_NDK_FULL_VERSION AND Qt6_VERSION VERSION_GREATER_EQUAL "${QGC_CONFIG_QT_MINIMUM_VERSION}")
+if(DEFINED QGC_CONFIG_NDK_FULL_VERSION)
     string(REGEX MATCH "^([0-9]+\\.[0-9]+)" _ndk_major_minor "${QGC_CONFIG_NDK_FULL_VERSION}")
     if(_ndk_major_minor AND NOT CMAKE_ANDROID_NDK_VERSION VERSION_GREATER_EQUAL "${_ndk_major_minor}")
         message(FATAL_ERROR "QGC: NDK ${CMAKE_ANDROID_NDK_VERSION} is too old. Qt ${Qt6_VERSION} requires NDK ${_ndk_major_minor}+ (${QGC_CONFIG_NDK_VERSION})")
@@ -101,24 +101,13 @@ set_target_properties(${CMAKE_PROJECT_NAME}
 # endif()
 
 set(QGC_CPM_JAVA_SRC_DIR "${CMAKE_BINARY_DIR}/extra_java_sources")
-list(APPEND QT_ANDROID_MULTI_ABI_FORWARD_VARS QGC_STABLE_BUILD QT_HOST_PATH QGC_CPM_JAVA_SRC_DIR QGC_ANDROID_PROPERTIES_FILE)
+# Forward Python3_EXECUTABLE so per-ABI sub-configures use the same interpreter (jinja2 lives in workspace .venv, not hostedtoolcache python).
+list(APPEND QT_ANDROID_MULTI_ABI_FORWARD_VARS QGC_STABLE_BUILD QT_HOST_PATH QGC_CPM_JAVA_SRC_DIR QGC_ANDROID_PROPERTIES_FILE Python3_EXECUTABLE)
 
 # ----------------------------------------------------------------------------
 # Android OpenSSL Libraries
 # ----------------------------------------------------------------------------
-CPMAddPackage(
-    NAME android_openssl
-    GITHUB_REPOSITORY KDAB/android_openssl
-    GIT_TAG b71f1470962019bd89534a2919f5925f93bc5779
-)
-
-if(android_openssl_ADDED)
-    include(${android_openssl_SOURCE_DIR}/android_openssl.cmake)
-    add_android_openssl_libraries(${CMAKE_PROJECT_NAME})
-    message(STATUS "QGC: Android OpenSSL libraries added")
-else()
-    message(WARNING "QGC: Failed to add Android OpenSSL libraries")
-endif()
+include(AndroidOpenSSL)
 
 # ----------------------------------------------------------------------------
 # Android Permissions

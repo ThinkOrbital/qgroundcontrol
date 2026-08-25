@@ -12,6 +12,9 @@
 #include "BackendController.h"
 #include "OrthoBackend.h"
 
+class ComplexMissionItem;
+class PlanCreator;
+
 class CustomOptions;
 class CustomPlugin;
 class CustomSettings;
@@ -70,9 +73,10 @@ public:
 
     void cleanup() final;
     void init() final;
+    void _wireCustomSettingsToBackend();
     QGCOptions *options() final { return _options; }
-    QString brandImageIndoor() const final { return QStringLiteral("/custom/img/dronecode-white.svg"); }
-    QString brandImageOutdoor() const final { return QStringLiteral("/custom/img/dronecode-black.svg"); }
+    // QString brandImageIndoor() const final { return QStringLiteral("/custom/img/dronecode-white.svg"); }
+    // QString brandImageOutdoor() const final { return QStringLiteral("/custom/img/dronecode-black.svg"); }
     bool overrideSettingsGroupVisibility(const QString &name) final;
     /// This allows you to override/hide QGC Application settings
     void adjustSettingMetaData(const QString &settingsGroup, FactMetaData &metaData, bool &visible) final;
@@ -82,6 +86,19 @@ public:
     QQmlApplicationEngine *createQmlApplicationEngine(QObject *parent) final;
     Q_PROPERTY(CustomSettings* customSettings READ customSettings CONSTANT);
     CustomSettings* customSettings  () { return _customSettings; }
+
+    /// Adds the Perimeter Scan item to the complex-item menu.
+    QVariantList complexMissionItemNames(Vehicle *vehicle) final;
+    /// Factory: creates PerimeterScanComplexItem for our custom type, falls back to base for built-ins.
+    ComplexMissionItem *createComplexMissionItem(const QString &complexItemType,
+                                                 PlanMasterController *masterController,
+                                                 bool flyView,
+                                                 const QString &kmlOrShpFile = QString()) final;
+    /// Adds the Perimeter Scan plan creator to the New Plan dialog.
+    QList<PlanCreator *> planCreators(PlanMasterController *planMasterController) final;
+
+    // Return the internal backend.
+    BackendController* backendController() { return _backendController; }
 
 private slots:
     void _advancedChanged(bool advanced);

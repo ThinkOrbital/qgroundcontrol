@@ -9,7 +9,8 @@
     "type": "Int32",
     "default": 10,
     "min": 5,
-    "max": 20
+    "max": 20,
+    "label": "Separation Distance"
 },
 {
     "name": "bearing",
@@ -17,16 +18,18 @@
     "type": "Int32",
     "default": 0,
     "min": 0,
-    "max": 360
+    "max": 360,
+    "label": "Target Bearing of Emitter Drone"
 },
 {
-    "name": "altitude",
+    "name": "targetAlt",
     "shortDesc": "Target altitude",
     "type": "double",
     "default": 2.0,
     "minValue": 0.0,
     "maxValue": 120.0,
-    "decimalPlaces": 1
+    "decimalPlaces": 1,
+    "label": "Target Altitude"
 },
 {
     "name": "detOffset",
@@ -35,7 +38,8 @@
     "default": 0.0,
     "minValue": -5.0,
     "maxValue": 5.0,
-    "decimalPlaces": 1
+    "decimalPlaces": 1,
+    "label": "Detector target distance offset"
 },
 {
     "name": "emAltOffset",
@@ -44,7 +48,8 @@
     "default": 0.0,
     "minValue": -1.0,
     "maxValue": 1.0,
-    "decimalPlaces": 1
+    "decimalPlaces": 1,
+    "label": "Emitter altitude offset"
 },
 {
     "name": "flightAlt",
@@ -53,7 +58,8 @@
     "default": 20.0,
     "minValue": 0.0,
     "maxValue": 120.0,
-    "decimalPlaces": 1
+    "decimalPlaces": 1,
+    "label": "Flight Altitude"
 },
 {
     "name": "flightVel",
@@ -62,7 +68,8 @@
     "default": 3.0,
     "minValue": 1.0,
     "maxValue": 5.0,
-    "decimalPlaces": 1
+    "decimalPlaces": 1,
+    "label": "Flight Velocity"
 },
 {
     "name": "goalLat",
@@ -71,7 +78,8 @@
     "minValue": "-90",
     "maxValue": "90",
     "decimalPlaces": 7,
-    "default": 0
+    "default": 0,
+    "label": "Goal Latitude"
 },
 {
     "name": "goalLon",
@@ -80,7 +88,8 @@
     "minValue": "-180",
     "maxValue": "180",
     "decimalPlaces": 7,
-    "default": 0
+    "default": 0,
+    "label": "Goal Longitude"
 },
 {
     "name": "numImages",
@@ -88,22 +97,34 @@
     "type": "Int32",
     "default": 1,
     "min": 1,
-    "max": 5
+    "max": 5,
+    "label": "Number of Images"
 },
 {
     "name": "fileName",
     "shortDesc": "Filename for xray scans",
     "type": "string",
-    "default": "image"
+    "default": "image",
+    "label": "Filename for xray scans"
 },
 {
     "name": "detectorXrayWindow",
     "shortDesc": "XRay window [ms]",
-    "type": "double",
+    "type": "Int16",
     "default": 1000.0,
     "minValue": 100.0,
     "maxValue": 3000.0,
-    "decimalPlaces": 1
+    "decimalPlaces": 1,
+    "label": "Detector XRay window"
+},
+{
+    "name": "overlap",
+    "shortDesc": "Percent overlap for linear scan imagery",
+    "type": "Int32",
+    "default": 25,
+    "min": 0,
+    "max": 99,
+    "label": "Percent Overlap"
 }
 ]
 }

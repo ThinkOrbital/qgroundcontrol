@@ -1,6 +1,5 @@
 #include "QGroundControlQmlGlobal.h"
 
-#include "QGCApplication.h"
 #include "QGCCorePlugin.h"
 #include "LinkManager.h"
 #include "MAVLinkProtocol.h"
@@ -11,10 +10,13 @@
 #include "PositionManager.h"
 #include "QGCMapEngineManager.h"
 #include "ADSBVehicleManager.h"
+#include "AudioOutput.h"
+#include "NTRIPManager.h"
+#include "MAVLinkSigningKeys.h"
 #include "MissionCommandTree.h"
 #include "VideoManager.h"
 #include "MultiVehicleManager.h"
-#include "QGCLoggingCategory.h"
+#include "LoggingCategoryModel.h"
 #ifndef QGC_NO_SERIAL_LINK
 #include "GPSManager.h"
 #include "GPSRtk.h"
@@ -23,8 +25,12 @@
 #include "MockLink.h"
 #endif
 
-#include <QtCore/QSettings>
 #include <QtCore/QLineF>
+#include <QtCore/QSettings>
+#include <QtGui/QClipboard>
+#include <QtGui/QGuiApplication>
+
+#include "QGCLoggingCategory.h"
 
 QGC_LOGGING_CATEGORY(GuidedActionsControllerLog, "QMLControls.GuidedActionsController")
 
@@ -35,8 +41,10 @@ QGroundControlQmlGlobal::QGroundControlQmlGlobal(QObject *parent)
     : QObject(parent)
     , _mapEngineManager(QGCMapEngineManager::instance())
     , _adsbVehicleManager(ADSBVehicleManager::instance())
+    , _ntripManager(NTRIPManager::instance())
     , _qgcPositionManager(QGCPositionManager::instance())
     , _missionCommandTree(MissionCommandTree::instance())
+    , _mavlinkSigningKeys(MAVLinkSigningKeys::instance())
     , _videoManager(VideoManager::instance())
     , _linkManager(LinkManager::instance())
     , _multiVehicleManager(MultiVehicleManager::instance())
@@ -257,44 +265,42 @@ QString QGroundControlQmlGlobal::qgcVersion(void)
     return versionStr;
 }
 
-QString QGroundControlQmlGlobal::altitudeModeExtraUnits(AltMode altMode)
+QString QGroundControlQmlGlobal::altitudeFrameExtraUnits(AltitudeFrame altFrame)
 {
-    switch (altMode) {
-    case AltitudeModeNone:
+    switch (altFrame) {
+    case AltitudeFrameNone:
         return QString();
-    case AltitudeModeRelative:
-        // Showing (Rel) all the time ends up being too noisy
-        return QString();
-    case AltitudeModeAbsolute:
-        return tr("(AMSL)");
-    case AltitudeModeCalcAboveTerrain:
-        return tr("(TerrC)");
-    case AltitudeModeTerrainFrame:
-        return tr("(Terr)");
-    case AltitudeModeMixed:
-        qWarning() << "Internal Error: QGroundControlQmlGlobal::altitudeModeExtraUnits called with altMode == AltitudeModeMixed";
-        return QString();
+    case AltitudeFrameRelative:
+        return tr("Rel");
+    case AltitudeFrameAbsolute:
+        return tr("AMSL");
+    case AltitudeFrameCalcAboveTerrain:
+        return tr("AGLC");
+    case AltitudeFrameTerrain:
+        return tr("AGL");
+    case AltitudeFrameMixed:
+        return tr("Mixed");
     }
 
     // Should never get here but makes some compilers happy
     return QString();
 }
 
-QString QGroundControlQmlGlobal::altitudeModeShortDescription(AltMode altMode)
+QString QGroundControlQmlGlobal::altitudeFrameShortDescription(AltitudeFrame altFrame)
 {
-    switch (altMode) {
-    case AltitudeModeNone:
+    switch (altFrame) {
+    case AltitudeFrameNone:
         return QString();
-    case AltitudeModeRelative:
-        return tr("Relative");
-    case AltitudeModeAbsolute:
-        return tr("Absolute");
-    case AltitudeModeCalcAboveTerrain:
-        return tr("TerrainC");
-    case AltitudeModeTerrainFrame:
-        return tr("Terrain");
-    case AltitudeModeMixed:
-        return tr("Waypoint");
+    case AltitudeFrameRelative:
+        return tr("Relative (%1)").arg(altitudeFrameExtraUnits(altFrame));
+    case AltitudeFrameAbsolute:
+        return tr("Absolute (%1)").arg(altitudeFrameExtraUnits(altFrame));
+    case AltitudeFrameCalcAboveTerrain:
+        return tr("Above Terrain Calced (%1)").arg(altitudeFrameExtraUnits(altFrame));
+    case AltitudeFrameTerrain:
+        return tr("Above Terrain (%1)").arg(altitudeFrameExtraUnits(altFrame));
+    case AltitudeFrameMixed:
+        return tr("Mixed");
     }
 
     // Should never get here but makes some compilers happy
@@ -310,6 +316,16 @@ void QGroundControlQmlGlobal::showMessageDialog(
     QJSValue closeFunction)
 {
     emit showMessageDialogRequested(owner, title, text, buttons, acceptFunction, closeFunction);
+}
+
+void QGroundControlQmlGlobal::testAudioOutput()
+{
+    AudioOutput::instance()->testAudioOutput();
+}
+
+void QGroundControlQmlGlobal::copyToClipboard(const QString& text)
+{
+    QGuiApplication::clipboard()->setText(text);
 }
 
 QString QGroundControlQmlGlobal::elevationProviderName()
@@ -337,37 +353,4 @@ QString QGroundControlQmlGlobal::appName()
     return QCoreApplication::applicationName();
 }
 
-void QGroundControlQmlGlobal::deleteAllSettingsNextBoot()
-{
-    QGCApplication::deleteAllSettingsNextBoot();
-}
 
-void QGroundControlQmlGlobal::clearDeleteAllSettingsNextBoot()
-{
-    QGCApplication::clearDeleteAllSettingsNextBoot();
-}
-
-QmlObjectListModel *QGroundControlQmlGlobal::treeLoggingCategoriesModel()
-{
-    return QGCLoggingCategoryManager::instance()->treeCategoryModel();
-}
-
-QmlObjectListModel *QGroundControlQmlGlobal::flatLoggingCategoriesModel()
-{
-    return QGCLoggingCategoryManager::instance()->flatCategoryModel();
-}
-
-void QGroundControlQmlGlobal::setCategoryLoggingOn(const QString &category, bool enable)
-{
-    QGCLoggingCategoryManager::instance()->setCategoryLoggingOn(category, enable);
-}
-
-bool QGroundControlQmlGlobal::categoryLoggingOn(const QString &category)
-{
-    return QGCLoggingCategoryManager::categoryLoggingOn(category);
-}
-
-void QGroundControlQmlGlobal::disableAllLoggingCategories()
-{
-    QGCLoggingCategoryManager::instance()->disableAllCategories();
-}

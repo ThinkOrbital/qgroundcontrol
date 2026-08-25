@@ -19,6 +19,14 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
+
+from ci_bootstrap import ensure_tools_dir
+
+ensure_tools_dir(__file__)
+
+from common.gh_actions import write_github_output, write_step_summary
+from common.proc import run_captured
 
 
 @dataclass
@@ -28,9 +36,30 @@ class ArchiveResult:
     extension: str
 
 
+def _curl_cmd(url: str, dest: Path) -> list[str]:
+    return [
+        "curl",
+        "-fsSL",
+        "--retry",
+        "5",
+        "--retry-delay",
+        "2",
+        "--retry-all-errors",
+        "--max-time",
+        "300",
+        "-o",
+        str(dest),
+        url,
+    ]
+
+
 def run_command(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
-    """Run command with improved error output."""
-    result = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
+    """Run *cmd* via common.proc.run_captured, printing stdout/stderr on failure.
+
+    The verbose error logging exists because tar/curl/aws-cli failures here are
+    debugged from CI logs — a plain CalledProcessError traceback isn't enough.
+    """
+    result = run_captured(cmd, **kwargs)
     if result.returncode != 0:
         print(f"Command failed: {' '.join(cmd)}", file=sys.stderr)
         if result.stdout:
@@ -42,8 +71,8 @@ def run_command(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 
 
 class GStreamerArchiver:
-    VALID_PLATFORMS = {"linux", "macos", "windows", "android", "ios"}
-    ALLOWED_BUCKETS = {"qgroundcontrol"}
+    VALID_PLATFORMS: ClassVar[set[str]] = {"linux", "macos", "windows", "android", "ios"}
+    ALLOWED_BUCKETS: ClassVar[set[str]] = {"qgroundcontrol"}
 
     def __init__(
         self,
@@ -185,7 +214,7 @@ class GStreamerArchiver:
             "--acl",
             "public-read",
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        result = run_captured(cmd, env=env)
         if result.returncode != 0:
             print(f"S3 upload failed: {result.stderr}", file=sys.stderr)
             raise subprocess.CalledProcessError(result.returncode, cmd)
@@ -214,7 +243,7 @@ class GStreamerArchiver:
     def _install_aws_cli_windows(self) -> None:
         """Install AWS CLI on Windows via MSI."""
         installer_path = self.output_dir / "AWSCLIV2.msi"
-        run_command(["curl", "-o", str(installer_path), "https://awscli.amazonaws.com/AWSCLIV2.msi"])
+        run_command(_curl_cmd("https://awscli.amazonaws.com/AWSCLIV2.msi", installer_path))
         run_command(["msiexec.exe", "/i", str(installer_path), "/quiet"])
         aws_path = "/c/Program Files/Amazon/AWSCLIV2"
         os.environ["PATH"] = f"{aws_path};{os.environ.get('PATH', '')}"
@@ -225,12 +254,7 @@ class GStreamerArchiver:
         installer_zip = self.output_dir / "awscliv2.zip"
         installer_dir = self.output_dir / "aws"
         run_command(
-            [
-                "curl",
-                "-o",
-                str(installer_zip),
-                f"https://awscli.amazonaws.com/awscli-exe-linux-{arch}.zip",
-            ]
+            _curl_cmd(f"https://awscli.amazonaws.com/awscli-exe-linux-{arch}.zip", installer_zip)
         )
         run_command(["unzip", "-q", str(installer_zip), "-d", str(self.output_dir)])
         run_command(["sudo", str(installer_dir / "install")])
@@ -254,22 +278,22 @@ class GStreamerArchiver:
     def _install_aws_cli_macos(self) -> None:
         """Install AWS CLI on macOS via pkg installer."""
         installer_pkg = self.output_dir / "AWSCLIV2.pkg"
-        run_command(["curl", "-o", str(installer_pkg), "https://awscli.amazonaws.com/AWSCLIV2.pkg"])
+        run_command(_curl_cmd("https://awscli.amazonaws.com/AWSCLIV2.pkg", installer_pkg))
         run_command(["sudo", "installer", "-pkg", str(installer_pkg), "-target", "/"])
 
     def write_github_output(self) -> None:
-        github_output = os.environ.get("GITHUB_OUTPUT")
-        if not github_output or not self._archive_result:
+        if not self._archive_result:
             return
-
-        with open(github_output, "a") as f:
-            f.write(f"name={self._archive_result.name}\n")
-            f.write(f"path={self._archive_result.path}\n")
-            f.write(f"ext={self._archive_result.extension}\n")
+        write_github_output(
+            {
+                "name": self._archive_result.name,
+                "path": str(self._archive_result.path),
+                "ext": self._archive_result.extension,
+            }
+        )
 
     def write_github_summary(self, uploaded: bool = False) -> None:
-        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-        if not summary_path or not self._archive_result:
+        if not self._archive_result:
             return
 
         arch_display = self._normalize_arch()
@@ -290,12 +314,9 @@ class GStreamerArchiver:
         ]
 
         if uploaded:
-            lines.append(
-                f"| S3 Path | dependencies/gstreamer/{self.platform}/{self.version}/ |"
-            )
+            lines.append(f"| S3 Path | dependencies/gstreamer/{self.platform}/{self.version}/ |")
 
-        with open(summary_path, "a") as f:
-            f.write("\n".join(lines) + "\n")
+        write_step_summary("\n".join(lines) + "\n")
 
 
 def parse_args() -> argparse.Namespace:

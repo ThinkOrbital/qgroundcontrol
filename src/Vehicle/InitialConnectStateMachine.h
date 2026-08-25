@@ -1,11 +1,7 @@
 #pragma once
 
 #include "QGCStateMachine.h"
-#include "MAVLinkLib.h"
-
-#include <QtCore/QLoggingCategory>
-
-Q_DECLARE_LOGGING_CATEGORY(InitialConnectStateMachineLog)
+#include "MAVLinkMessageType.h"
 
 class Vehicle;
 class SkippableAsyncState;
@@ -13,13 +9,15 @@ class AsyncFunctionState;
 class RetryableRequestMessageState;
 class RetryState;
 
-/// State machine for initial vehicle connection sequence.
+/// \brief State machine for initial vehicle connection sequence.
+///
 /// Handles requesting autopilot version, standard modes, component info,
 /// parameters, missions, geofence, and rally points in sequence.
 ///
 /// Uses QGCStateMachine's built-in weighted progress tracking where different
 /// states contribute different amounts to the overall progress (e.g., parameter
 /// loading takes longer than version request).
+///
 class InitialConnectStateMachine : public QGCStateMachine
 {
     Q_OBJECT
@@ -45,7 +43,7 @@ private:
     void _handleAutopilotVersionFailure();
     void _requestStandardModes(AsyncFunctionState* state);
     void _requestCompInfo(AsyncFunctionState* state);
-    void _requestParameters(AsyncFunctionState* state);
+    void _requestParameters(SkippableAsyncState* state);
     void _onParametersReady(bool ready);
     void _requestMission(SkippableAsyncState* state);
     void _requestGeoFence(SkippableAsyncState* state);
@@ -54,14 +52,18 @@ private:
 
     // Skip predicates
     bool _shouldSkipAutopilotVersionRequest() const;
+    bool _shouldSkipForFlying() const;
     bool _shouldSkipForLinkType() const;
     bool _hasPrimaryLink() const;
+    bool _shouldSkipForPlanLoad();
+
+    QString _lastSkipReason;
 
     // State pointers for wiring
     RetryableRequestMessageState* _stateAutopilotVersion = nullptr;
     AsyncFunctionState* _stateStandardModes = nullptr;
     AsyncFunctionState* _stateCompInfo = nullptr;
-    AsyncFunctionState* _stateParameters = nullptr;
+    SkippableAsyncState* _stateParameters = nullptr;
     SkippableAsyncState* _stateMission = nullptr;
     SkippableAsyncState* _stateGeoFence = nullptr;
     SkippableAsyncState* _stateRallyPoints = nullptr;

@@ -5,14 +5,18 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
-from datetime import datetime
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Any
 
-from workflow_runs import list_run_artifacts, list_workflow_runs, parse_csv_list
+from ci_bootstrap import ensure_tools_dir
 
+ensure_tools_dir(__file__)
+
+from common.format import format_bytes
+from common.gh_actions import list_run_artifacts, list_workflow_runs_for_sha, parse_csv_list
+from common.github_runs import select_latest_runs_by_name
 
 _DISTRIBUTABLE_PREFIXES = (
     "QGroundControl",
@@ -38,56 +42,6 @@ def _is_distributable_artifact(name: str) -> bool:
     if any(name.startswith(prefix) for prefix in _EXCLUDED_PREFIXES):
         return False
     return any(name.startswith(prefix) for prefix in _DISTRIBUTABLE_PREFIXES)
-
-
-def _parse_created_at(created_at: Any) -> datetime | None:
-    value = str(created_at).strip()
-    if not value:
-        return None
-    if value.endswith("Z"):
-        value = f"{value[:-1]}+00:00"
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        return None
-
-
-def _is_newer_run(candidate: dict[str, Any], existing: dict[str, Any]) -> bool:
-    candidate_created_at = str(candidate.get("created_at", ""))
-    existing_created_at = str(existing.get("created_at", ""))
-    candidate_dt = _parse_created_at(candidate_created_at)
-    existing_dt = _parse_created_at(existing_created_at)
-    if candidate_dt is not None and existing_dt is not None:
-        return candidate_dt > existing_dt
-    return candidate_created_at > existing_created_at
-
-
-def latest_successful_runs(
-    runs: list[dict[str, Any]],
-    platforms: list[str],
-) -> dict[str, dict[str, Any]]:
-    target = set(platforms)
-    latest: dict[str, dict[str, Any]] = {}
-
-    for run in runs:
-        name = str(run.get("name", ""))
-        if name not in target:
-            continue
-        if str(run.get("status", "")) != "completed" or str(run.get("conclusion", "")) != "success":
-            continue
-
-        existing = latest.get(name)
-        if existing is None or _is_newer_run(run, existing):
-            latest[name] = run
-
-    return latest
-
-
-def format_size_human(size_bytes: int) -> str:
-    size_mb = size_bytes / 1024 / 1024
-    if size_mb >= 1024:
-        return f"{(size_mb / 1024):.2f} GB"
-    return f"{size_mb:.2f} MB"
 
 
 def collect_artifacts(
@@ -117,45 +71,51 @@ def collect_artifacts(
                     {
                         "name": name,
                         "size_bytes": size_bytes,
-                        "size_human": format_size_human(size_bytes),
+                        "size_human": format_bytes(size_bytes),
                     }
                 )
         else:
             run_ids.append(run_id)
 
-    if not run_ids:
-        artifacts.sort(key=lambda item: str(item.get("name", "")))
-        return artifacts
-
-    max_workers = min(len(run_ids), 4)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
-        future_to_run = {
-            pool.submit(list_run_artifacts, repo, run_id): run_id
-            for run_id in run_ids
-        }
-        for future in concurrent.futures.as_completed(future_to_run):
-            run_id = future_to_run[future]
-            try:
-                run_artifacts = future.result()
-            except Exception as exc:
-                print(f"Warning: failed to list artifacts for run {run_id}: {exc}", file=sys.stderr)
-                continue
-            for artifact in run_artifacts:
-                name = str(artifact.get("name", ""))
-                if not _is_distributable_artifact(name):
+    if run_ids:
+        max_workers = min(len(run_ids), 4)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            future_to_run = {
+                pool.submit(list_run_artifacts, repo, run_id): run_id for run_id in run_ids
+            }
+            for future in concurrent.futures.as_completed(future_to_run):
+                run_id = future_to_run[future]
+                try:
+                    run_artifacts = future.result()
+                except Exception as exc:
+                    print(
+                        f"Warning: failed to list artifacts for run {run_id}: {exc}",
+                        file=sys.stderr,
+                    )
                     continue
+                for artifact in run_artifacts:
+                    name = str(artifact.get("name", ""))
+                    if not _is_distributable_artifact(name):
+                        continue
 
-                size_bytes = int(artifact.get("size_in_bytes", 0))
-                artifacts.append(
-                    {
-                        "name": name,
-                        "size_bytes": size_bytes,
-                        "size_human": format_size_human(size_bytes),
-                    }
-                )
+                    size_bytes = int(artifact.get("size_in_bytes", 0))
+                    artifacts.append(
+                        {
+                            "name": name,
+                            "size_bytes": size_bytes,
+                            "size_human": format_bytes(size_bytes),
+                        }
+                    )
 
-    artifacts.sort(key=lambda item: str(item.get("name", "")))
-    return artifacts
+    # Deduplicate by name — when multiple workflows produce an artifact with
+    # the same name (e.g. Android and macOS both upload "QGroundControl"),
+    # keep the largest to avoid misleading size deltas.
+    deduped: dict[str, dict[str, Any]] = {}
+    for artifact in artifacts:
+        name = artifact["name"]
+        if name not in deduped or artifact["size_bytes"] > deduped[name]["size_bytes"]:
+            deduped[name] = artifact
+    return sorted(deduped.values(), key=lambda item: str(item.get("name", "")))
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -166,6 +126,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--platform-workflows",
         default="Linux,Windows,MacOS,Android",
         help="Comma-separated platform workflow names",
+    )
+    parser.add_argument(
+        "--event",
+        default="",
+        choices=["", "push", "pull_request", "workflow_dispatch", "schedule"],
+        help="Optional workflow event name to filter runs by",
     )
     parser.add_argument(
         "--output-file",
@@ -188,6 +154,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     platforms = parse_csv_list(args.platform_workflows)
+    event = str(args.event).strip()
 
     if args.runs_file:
         try:
@@ -204,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         runs = loaded_runs
     else:
-        runs = list_workflow_runs(args.repo, args.head_sha)
+        runs = list_workflow_runs_for_sha(args.repo, args.head_sha)
     artifacts_by_run_id: dict[int, list[dict[str, Any]]] = {}
     if args.artifacts_file:
         artifacts_path = Path(args.artifacts_file)
@@ -225,7 +192,9 @@ def main(argv: list[str] | None = None) -> int:
                             artifact for artifact in run_artifacts if isinstance(artifact, dict)
                         ]
 
-    latest = latest_successful_runs(runs, platforms)
+    latest = select_latest_runs_by_name(
+        runs, set(platforms), event=event, status="completed", conclusion="success"
+    )
     artifacts = collect_artifacts(
         args.repo,
         latest,

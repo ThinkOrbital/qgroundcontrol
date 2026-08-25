@@ -1,14 +1,15 @@
 #pragma once
 
 #include "QGCState.h"
-#include "QGCMAVLink.h"
+#include "MAVLinkMessageType.h"
 
 #include <cstdint>
 #include <functional>
 
 class Vehicle;
 
-/// Sends the specified MAVLink message to the vehicle
+/// \brief Sends the specified MAVLink message to the vehicle
+///
 class SendMavlinkMessageState : public QGCState
 {
     Q_OBJECT

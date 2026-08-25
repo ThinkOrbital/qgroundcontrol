@@ -1,7 +1,16 @@
 name: iOS
 
-# iOS builds are experimental - manual trigger only until stable
 on:
+  push:
+    branches:
+      - master
+      - 'Stable*'
+    tags:
+      - 'v*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -15,7 +24,14 @@ permissions:
   actions: read
 
 jobs:
+  changes:
+    uses: ./.github/workflows/_detect-changes.yml
+    with:
+      platform: ios
+
   build:
+    needs: changes
+    if: needs.changes.outputs.should_build == 'true'
     runs-on: macos-15
     timeout-minutes: 120
 
@@ -40,33 +56,25 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: ${{ github.event_name == 'pull_request' && 1 || 0 }}
-          fetch-tags: ${{ github.event_name != 'pull_request' }}
 
-      - name: Get build config
-        id: config
-        uses: ./.github/actions/build-config
-
-      - name: Initial Setup
-        uses: ./.github/actions/common
-
-      - name: Install Qt (macOS host + iOS)
-        uses: ./.github/actions/qt-ios
+      - name: Build Setup (iOS)
+        id: setup
+        uses: ./.github/actions/build-setup
         with:
-          version: ${{ steps.config.outputs.qt_version }}
-          modules: ${{ steps.config.outputs.qt_modules }}
-          ios-modules: ${{ steps.config.outputs.qt_modules_ios }}
-          xcode-version: ${{ steps.config.outputs.xcode_ios_version }}
-          cpm-modules: ${{ runner.temp }}/build/cpm_modules
+          mode: ios
           build-type: ${{ matrix.build_type }}
-          save-cache: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          cpm-modules: ${{ runner.temp }}/build/cpm_modules
 
       - name: Configure
         uses: ./.github/actions/cmake-configure
         with:
           build-dir: ${{ runner.temp }}/build
           build-type: ${{ matrix.build_type }}
-          stable: ${{ (github.ref_type == 'tag' || contains(github.ref, 'Stable')) && 'true' || 'false' }}
-          extra-args: -DQT_HOST_PATH=${{ env.QT_ROOT_DIR }}/../macos
+          # Qt6LinguistTools cmake config ships with the desktop qtbase install (host),
+          # not iOS qtbase; point CMake at the host copy directly.
+          extra-args: >-
+            -DQT_HOST_PATH=${{ env.QT_ROOT_DIR }}/../macos
+            -DQt6LinguistTools_DIR=${{ env.QT_ROOT_DIR }}/../macos/lib/cmake/Qt6LinguistTools
 
       - name: Build
         uses: ./.github/actions/cmake-build
@@ -74,17 +82,12 @@ jobs:
           build-dir: ${{ runner.temp }}/build
           build-type: ${{ matrix.build_type }}
 
-      - name: Attest Build with SBOM
+      - name: Attest and Upload
         if: matrix.build_type == 'Release'
-        uses: ./.github/actions/attest-sbom
+        uses: ./.github/actions/attest-and-upload
         with:
-          subject-path: ${{ runner.temp }}/build/${{ env.PACKAGE }}.app
-          subject-name: ${{ env.PACKAGE }}
-          scan-path: ${{ runner.temp }}/build
-
-      - name: Upload Build File
-        uses: ./.github/actions/upload
-        with:
-          artifact_name: ${{ env.PACKAGE }}.app
-          package_name: ${{ env.PACKAGE }}
-          upload_aws: 'false'
+          artifact-name: ${{ env.PACKAGE }}.app
+          # iOS uses Ninja Multi-Config; the .app lands in build/<config>/, not build/.
+          artifact-source-path: ${{ runner.temp }}/build/${{ matrix.build_type }}/${{ env.PACKAGE }}.app
+          package-name: ${{ env.PACKAGE }}
+          upload-aws: 'false'

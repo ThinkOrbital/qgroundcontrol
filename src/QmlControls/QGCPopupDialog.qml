@@ -50,6 +50,7 @@ Popup {
     property var    dialogProperties
     property bool   destroyOnClose:         true
     property bool   preventClose:           false
+    property bool   bypassNavigationCheck:  false
 
     property real maxContentAvailableWidth:    mainWindow.width - _contentMargin * 6
     property real maxContentAvailableHeight:   mainWindow.height - titleRowLayout.height - _contentMargin * 7
@@ -104,7 +105,7 @@ Popup {
     }
 
     function _accept() {
-        if (_acceptAllowed && mainWindow.allowViewSwitch(_previousValidationErrorCount)) {
+        if (_acceptAllowed && (bypassNavigationCheck || mainWindow.allowViewSwitch(_previousValidationErrorCount))) {
             accepted()
             if (preventClose) {
                 preventClose = false
@@ -116,7 +117,7 @@ Popup {
 
     function _reject() {
         // Dialogs with cancel button are allowed to close with validation errors
-        if (_rejectAllowed && ((buttons & Dialog.Cancel) || mainWindow.allowViewSwitch(_previousValidationErrorCount))) {
+        if (_rejectAllowed && ((buttons & Dialog.Cancel) || bypassNavigationCheck || mainWindow.allowViewSwitch(_previousValidationErrorCount))) {
             rejected()
             if (preventClose) {
                 preventClose = false
@@ -223,6 +224,7 @@ Popup {
 
             QGCLabel {
                 id:                 titleLabel
+                objectName:         "popupDialog_title"
                 Layout.fillWidth:   true
                 text:               root.title
                 font.pointSize:     ScreenTools.mediumFontPointSize
@@ -231,12 +233,14 @@ Popup {
 
             QGCButton {
                 id:                     rejectButton
+                objectName:             "popupDialog_rejectButton"
                 onClicked:              _reject()
                 Layout.minimumWidth:    height * 1.5
             }
 
             QGCButton {
                 id:                     acceptButton
+                objectName:             "popupDialog_acceptButton"
                 primary:                true
                 onClicked:              _accept()
                 Layout.minimumWidth:    height * 1.5

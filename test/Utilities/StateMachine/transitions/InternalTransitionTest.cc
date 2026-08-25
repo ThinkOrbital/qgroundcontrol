@@ -20,7 +20,7 @@ void InternalTransitionTest::_testInternalTransition()
     );
     state->addTransition(internalTransition);
 
-    auto* finalState = new QFinalState(&machine);
+    auto* finalState = addFinalState(&machine);
     // Add a way to exit after testing internal transitions
     QTimer exitTimer;
     exitTimer.setSingleShot(true);
@@ -30,14 +30,14 @@ void InternalTransitionTest::_testInternalTransition()
 
     QSignalSpy enteredSpy(state, &QState::entered);
     machine.start();
-    QVERIFY(enteredSpy.wait(500));
+    QVERIFY(enteredSpy.wait(TestTimeout::shortMs()));
 
     // Trigger internal transitions - should NOT cause exit/re-entry
     signalSource.setObjectName(QStringLiteral("first"));
     signalSource.setObjectName(QStringLiteral("second"));
     signalSource.setObjectName(QStringLiteral("third"));
 
-    QTest::qWait(50);
+    QCoreApplication::processEvents();
 
     QCOMPARE(actionCount, 3);
     QCOMPARE(entryCount, 1);  // Only entered once
@@ -45,7 +45,7 @@ void InternalTransitionTest::_testInternalTransition()
 
     exitTimer.start(50);
     QSignalSpy finishedSpy(&machine, &QStateMachine::finished);
-    QVERIFY(finishedSpy.wait(500));
+    QVERIFY(finishedSpy.wait(TestTimeout::shortMs()));
 
     QCOMPARE(exitCount, 1);  // Now exited
 }

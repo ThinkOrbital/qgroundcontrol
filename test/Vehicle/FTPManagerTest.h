@@ -13,6 +13,8 @@ private slots:
     void _performSizeBasedTestCases();
     void _testLostPackets();
     void _testListDirectory();
+    void _testListDirectoryWithTime();
+    void _testListDirectoryWithTimeFallback();
     void _testListDirectoryNoResponse();
     void _testListDirectoryNakResponse();
     void _testListDirectoryNoSecondResponse();
@@ -26,10 +28,10 @@ private slots:
     void cleanup() override;
 
 private:
-    typedef struct
+    struct TestCase_t
     {
         const char* file;
-    } TestCase_t;
+    };
 
     void _testCaseWorker(const TestCase_t& testCase);
     void _sizeTestCaseWorker(int fileSize);

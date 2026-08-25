@@ -11,8 +11,8 @@ endif()
 target_sources(${CMAKE_PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/QmlTesting.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/QmlTestRunner.cc
-        ${CMAKE_CURRENT_SOURCE_DIR}/QmlTestRunner.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/QmlTestFileValidator.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/QmlTestFileValidator.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME}
@@ -62,3 +62,5 @@ endforeach()
 # Copy QML test files to build directory
 file(GLOB QML_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.qml")
 file(COPY ${QML_TEST_FILES} DESTINATION ${CMAKE_BINARY_DIR}/qmltests)
+
+add_qgc_test(QmlTestFileValidator LABELS Unit)

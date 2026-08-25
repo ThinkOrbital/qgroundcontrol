@@ -3,6 +3,11 @@ name: Flatpak
 on:
   workflow_dispatch:
 
+concurrency:
+  # flatpak-builder with the same cache key concurrently is undefined behavior.
+  group: flatpak-build
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -31,10 +36,10 @@ jobs:
         with:
           bundle: QGroundControl.flatpak
           manifest-path: deploy/linux/org.mavlink.qgroundcontrol.flatpak.yml
-          cache-key: flatpak-builder-${{ hashFiles('deploy/linux/org.mavlink.qgroundcontrol.flatpak.yml') }}
+          cache: false
 
       - name: Upload Flatpak
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: QGroundControl-flatpak
           path: QGroundControl.flatpak

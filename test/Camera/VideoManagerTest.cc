@@ -1,25 +1,16 @@
 #include "VideoManagerTest.h"
 
-#include <QtCore/QScopeGuard>
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlEngine>
 #include <QtQuick/QQuickItem>
 
+#include "Fixtures/RAIIFixtures.h"
 #include "VideoManager.h"
 
-void VideoManagerTest::_gstQt6VideoItemQmlTypeAvailableInUnitTestMode_test()
+void VideoManagerTest::_videoOutputQmlTypeAvailableInUnitTestMode_test()
 {
     static constexpr auto envName = "QGC_TEST_ENABLE_GSTREAMER";
-    const bool wasSet = qEnvironmentVariableIsSet(envName);
-    const QByteArray previousValue = qgetenv(envName);
-    const auto restoreEnv = qScopeGuard([wasSet, previousValue]() {
-        if (wasSet) {
-            qputenv(envName, previousValue);
-        } else {
-            qunsetenv(envName);
-        }
-    });
-
+    TestFixtures::EnvVarFixture envBackup(envName);
     qunsetenv(envName);
 
     VideoManager testManager;
@@ -28,9 +19,9 @@ void VideoManagerTest::_gstQt6VideoItemQmlTypeAvailableInUnitTestMode_test()
 
     component.setData(R"QML(
 import QtQuick
-import org.freedesktop.gstreamer.Qt6GLVideoItem 1.0
+import QtMultimedia
 
-GstGLQt6VideoItem {
+VideoOutput {
     width: 32
     height: 24
 }
@@ -45,4 +36,3 @@ GstGLQt6VideoItem {
 }
 
 UT_REGISTER_TEST(VideoManagerTest, TestLabel::Unit)
-

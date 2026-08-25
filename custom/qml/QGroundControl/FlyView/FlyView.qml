@@ -12,6 +12,7 @@ import QGroundControl
 import QGroundControl.Controls
 import QGroundControl.FlyView
 import QGroundControl.FlightMap
+import QGroundControl.Toolbar
 import QGroundControl.Viewer3D
 
 Item {
@@ -66,13 +67,9 @@ Item {
         bottomEdgeLeftInset:    _pipView.bottomEdgeLeftInset
     }
 
-    
-
     Item {
         id:                 mapHolder
         anchors.fill:       parent
-
-        // Tile math functions — accessible by everything in mapHolder scope
 
         FlyViewMap {
             id:                     mapControl
@@ -95,7 +92,7 @@ Item {
 
                 function onOrthoReadyChanged() {
                     if (ortho.orthoReady) {
-                        // Switch to the CustomURL provider (your ortho tiles)
+                        // Switch to the CustomURL provider
                         for (var i = 0; i < _mapControl.supportedMapTypes.length; i++) {
                             if (_mapControl.supportedMapTypes[i].name === "CustomURL Custom") {
                                 _mapControl.activeMapType = _mapControl.supportedMapTypes[i]
@@ -103,7 +100,7 @@ Item {
                             }
                         }
                     } else {
-                        // Switch back to Bing (or whatever your default is)
+                        // Switch back to default
                         for (var i = 0; i < _mapControl.supportedMapTypes.length; i++) {
                             if (_mapControl.supportedMapTypes[i].name === "Bing Satellite") {
                                 _mapControl.activeMapType = _mapControl.supportedMapTypes[i]

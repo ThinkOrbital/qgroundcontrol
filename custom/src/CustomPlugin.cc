@@ -1,11 +1,13 @@
 #include "CustomPlugin.h"
+#include "PerimeterScanComplexItem.h"
+#include "PerimeterScanPlanCreator.h"
 #include "QmlComponentInfo.h"
 #include "QGCLoggingCategory.h"
 #include "QGCPalette.h"
 #include "QGCMAVLink.h"
 #include "AppSettings.h"
+// #include "BrandImageSettings.h"
 #include "SettingsManager.h"
-#include "BrandImageSettings.h"
 
 #include <QtCore/QApplicationStatic>
 #include <QtQml/QQmlApplicationEngine>
@@ -46,6 +48,102 @@ void CustomPlugin::init()
 {
     // If this goes in the constructor, it causes a deadlock.
     _customSettings = new CustomSettings(nullptr);
+
+    _wireCustomSettingsToBackend();
+}
+
+void CustomPlugin::_wireCustomSettingsToBackend()
+{
+    if (!_customSettings || !_backendController) {
+        qWarning() << "CustomPlugin: cannot wire settings, _customSettings or _backendController is null";
+        return;
+    }
+
+    Fact *sepDistFact = _customSettings->separationDistance();
+    Fact *bearingFact = _customSettings->bearing();
+    Fact *targetAltFact = _customSettings->targetAlt();
+    Fact *detOffsetFact = _customSettings->detOffset();
+    Fact *emAltOffsetFact = _customSettings->emAltOffset();
+    Fact *flightAltFact = _customSettings->flightAlt();
+    Fact *flightVelFact = _customSettings->flightVel();
+    Fact *goalLatFact = _customSettings->goalLat();
+    Fact *goalLonFact = _customSettings->goalLon();
+    Fact *numImagesFact = _customSettings->numImages();
+    Fact *fileNameFact = _customSettings->fileName();
+    Fact *xrayWindowFact = _customSettings->detectorXrayWindow();
+    Fact *overlapFact = _customSettings->overlap();
+
+    _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
+    connect(sepDistFact, &Fact::valueChanged, _backendController, [this, sepDistFact]() {
+        _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
+    });
+
+    _backendController->setBearing(bearingFact->rawValue().toDouble());
+    connect(bearingFact, &Fact::valueChanged, _backendController, [this, bearingFact]() {
+        _backendController->setBearing(bearingFact->rawValue().toDouble());
+    });
+
+    _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
+    connect(targetAltFact, &Fact::valueChanged, _backendController, [this, targetAltFact]() {
+        _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
+    });
+
+    _backendController->setDetOffset(detOffsetFact->rawValue().toDouble());
+    connect(detOffsetFact, &Fact::valueChanged, _backendController, [this, detOffsetFact]() {
+        _backendController->setDetOffset(detOffsetFact->rawValue().toDouble());
+    });
+
+    _backendController->setEmAltOffset(emAltOffsetFact->rawValue().toDouble());
+    connect(emAltOffsetFact, &Fact::valueChanged, _backendController, [this, emAltOffsetFact]() {
+        _backendController->setEmAltOffset(emAltOffsetFact->rawValue().toDouble());
+    });
+
+    _backendController->setFlightAlt(flightAltFact->rawValue().toDouble());
+    connect(flightAltFact, &Fact::valueChanged, _backendController, [this, flightAltFact]() {
+        _backendController->setFlightAlt(flightAltFact->rawValue().toDouble());
+    });
+
+    _backendController->setFlightVel(flightVelFact->rawValue().toDouble());
+    connect(flightVelFact, &Fact::valueChanged, _backendController, [this, flightVelFact]() {
+        _backendController->setFlightVel(flightVelFact->rawValue().toDouble());
+    });
+
+    _backendController->setNumImages(static_cast<uint8_t>(numImagesFact->rawValue().toUInt()));
+    connect(numImagesFact, &Fact::valueChanged, _backendController, [this, numImagesFact]() {
+        _backendController->setNumImages(static_cast<uint8_t>(numImagesFact->rawValue().toUInt()));
+    });
+
+    _backendController->setFileName(fileNameFact->rawValue().toString());
+    connect(fileNameFact, &Fact::valueChanged, _backendController, [this, fileNameFact]() {
+        _backendController->setFileName(fileNameFact->rawValue().toString());
+    });
+
+    _backendController->setXrayWindow(static_cast<uint16_t>(xrayWindowFact->rawValue().toUInt()));
+    connect(xrayWindowFact, &Fact::valueChanged, _backendController, [this, xrayWindowFact]() {
+        _backendController->setXrayWindow(static_cast<uint16_t>(xrayWindowFact->rawValue().toUInt()));
+    });
+
+    _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
+    connect(overlapFact, &Fact::valueChanged, _backendController, [this, overlapFact]() {
+        _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
+    });
+
+    // goalLat/goalLon combine into one QGeoCoordinate-typed property
+    auto updateCenterCoordinate = [this, goalLatFact, goalLonFact]() {
+        _backendController->setCenterCoordinate(QGeoCoordinate(
+            goalLatFact->rawValue().toDouble(),
+            goalLonFact->rawValue().toDouble()));
+    };
+    updateCenterCoordinate(); // seed initial value
+    connect(goalLatFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
+    connect(goalLonFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
+
+    // In order for the center coordinate fact to persist a reboot of QGC, save the fact.
+    connect(_backendController, &BackendController::centerCoordinateChanged, this, [this, goalLatFact, goalLonFact]() {
+        const QGeoCoordinate coord = _backendController->centerCoordinate();
+        goalLatFact->setRawValue(coord.latitude());
+        goalLonFact->setRawValue(coord.longitude());
+    });
 }
 
 QGCCorePlugin *CustomPlugin::instance()
@@ -280,8 +378,10 @@ QQmlApplicationEngine* CustomPlugin::createQmlApplicationEngine(QObject* parent)
 {
     _qmlEngine = QGCCorePlugin::createQmlApplicationEngine(parent);
     _qmlEngine->addImportPath("qrc:/qml/Custom/Widgets");
+    _qmlEngine->addImportPath("qrc:/qml/Custom/Plan");
     // TODO: Investigate _qmlEngine->setExtraSelectors({"custom"})
     _backendController = new BackendController(this);
+    _wireCustomSettingsToBackend();
 
     _qmlEngine->rootContext()->setContextProperty(
         "backend",
@@ -343,4 +443,38 @@ QUrl CustomOverrideInterceptor::intercept(const QUrl &url, QQmlAbstractUrlInterc
     }
 
     return url;
+}
+
+QVariantList CustomPlugin::complexMissionItemNames(Vehicle *vehicle)
+{
+    // Start with the standard set, then append our custom item.
+    QVariantList items = QGCCorePlugin::complexMissionItemNames(vehicle);
+
+    QVariantMap entry;
+    entry[QStringLiteral("canonicalName")]  = QString(PerimeterScanComplexItem::canonicalName);
+    entry[QStringLiteral("translatedName")] = PerimeterScanComplexItem::tr(PerimeterScanComplexItem::canonicalName);
+    items.append(entry);
+
+    return items;
+}
+
+ComplexMissionItem *CustomPlugin::createComplexMissionItem(const QString &complexItemType,
+                                                            PlanMasterController *masterController,
+                                                            bool flyView,
+                                                            const QString &kmlOrShpFile)
+{
+    if (complexItemType == PerimeterScanComplexItem::canonicalName
+            || complexItemType == PerimeterScanComplexItem::jsonComplexItemTypeValue) {
+        return new PerimeterScanComplexItem(masterController, flyView, kmlOrShpFile);
+    }
+    // Fall back to the built-in factory for all standard item types.
+    return QGCCorePlugin::createComplexMissionItem(complexItemType, masterController, flyView, kmlOrShpFile);
+}
+
+QList<PlanCreator *> CustomPlugin::planCreators(PlanMasterController *planMasterController)
+{
+    // Start with the standard creators, then add ours.
+    QList<PlanCreator *> creators = QGCCorePlugin::planCreators(planMasterController);
+    creators.append(new PerimeterScanPlanCreator(planMasterController));
+    return creators;
 }
