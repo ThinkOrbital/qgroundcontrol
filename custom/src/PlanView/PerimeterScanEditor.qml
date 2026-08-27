@@ -136,6 +136,18 @@ Rectangle {
                 showUnits: true
             }
 
+            QGCCheckBox {
+                id: swapCheckbox
+                Layout.columnSpan: 2
+                Layout.alignment: Qt.AlignHCenter
+                text:    qsTr("Swap UAVs")
+                checked: missionItem.swapUavs
+                
+                onToggled: {
+                    missionItem.setSwapUavs(swapCheckbox.checked)
+                }
+            }
+
             QGCButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter

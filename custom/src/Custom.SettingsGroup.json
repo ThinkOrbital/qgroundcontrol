@@ -125,6 +125,13 @@
     "min": 0,
     "max": 99,
     "label": "Percent Overlap"
+},
+{
+    "name": "swapUavs",
+    "shortDesc": "swap position of drones for linear scan",
+    "type": "Bool",
+    "default": false,
+    "label": "Swap UAVs"
 }
 ]
 }

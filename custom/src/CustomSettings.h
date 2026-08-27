@@ -27,5 +27,6 @@ public:
     DEFINE_SETTINGFACT(fileName)
     DEFINE_SETTINGFACT(detectorXrayWindow)
     DEFINE_SETTINGFACT(overlap)
+    DEFINE_SETTINGFACT(swapUavs)
 
 };

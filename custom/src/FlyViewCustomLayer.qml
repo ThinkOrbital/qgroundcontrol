@@ -815,13 +815,30 @@ Item {
             }   
             // ================= MISSION BUTTONS =================
   
+            QGCCheckBox {
+                id: multiScanCheckbox
+                Layout.columnSpan: 2
+                Layout.alignment: Qt.AlignHCenter
+                text:    qsTr("Multi-Scan Mission")
+                checked: backend.linearScan
+                
+                onToggled: {
+                    backend.setLinearScan(multiScanCheckbox.checked)
+                }
+            }
+
+            FactCheckBox {
+                fact: _customSettings.swapUavs
+                text: qsTr("Swap UAVs")
+            }
+
             QGCButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
-                onClicked: backend.sendCenterGoal()
+                onClicked: backend.linearScan ? backend.sendLinearScanGoal() : backend.sendCenterGoal()
                 enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)

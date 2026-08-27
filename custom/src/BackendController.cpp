@@ -767,8 +767,18 @@ void BackendController::processTelemetryUpdates()
 
 void BackendController::nudge(const double azimuth, const double distance)
 {
+    
+    //center coordinate
     QGeoCoordinate newCoord = center_coordinate_.atDistanceAndAzimuth(distance, azimuth);
     setCenterCoordinate(newCoord);
+
+    if(linear_scan_) {
+        QGeoCoordinate newStartCoord = start_coordinate_.atDistanceAndAzimuth(distance, azimuth);
+        setStartCoordinate(newStartCoord);
+
+        QGeoCoordinate newEndCoord = end_coordinate_.atDistanceAndAzimuth(distance, azimuth);
+        setEndCoordinate(newEndCoord);
+    }
 }
 
 void BackendController::setScanMissionMode(const bool mode)
@@ -830,6 +840,44 @@ void BackendController::setBearing(const double bearing)
         emit bearingChanged();
         emit emitterGoalCoordChanged();
         emit detectorGoalCoordChanged();
+
+        if(linear_scan_)
+        {
+            double length_m = startCoordinate().distanceTo(endCoordinate())/2;
+            
+            QGeoCoordinate newStart;
+            QGeoCoordinate newEnd;
+
+            if(swap_uavs_){
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
+            } else {
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
+            }
+
+            setStartCoordinate(newStart);
+            emit startCoordinateChanged();
+            setEndCoordinate(newEnd);
+            emit endCoordinateChanged();
+        }
+
+    }
+}
+
+void::BackendController::setSwapUavs(const bool swap)
+{
+    if(swap_uavs_ != swap)
+    {
+        qDebug() << "setting Swap UAVs to " << swap;
+        // I'm assuming atDistanceAndAzimuth already deals with angle windup
+        // Note: we do not want to call setBearing, as this will also move the start/end coordinates
+        bearing_ = bearing_ + 180;
+        emit bearingChanged();
+        emit emitterGoalCoordChanged();
+        emit detectorGoalCoordChanged();
+        
+        swap_uavs_ = swap;
     }
 }
 
@@ -946,6 +994,15 @@ void BackendController::sendCenterGoal()
     sendGoal(msg);
 }
 
+void BackendController::setLinearScan(bool linear_scan)
+{
+    if(this->linear_scan_ != linear_scan)
+    {
+        this->linear_scan_ = linear_scan;
+        emit linearScanChanged();
+    }
+}
+
 void BackendController::sendLinearScanGoal()
 {
     qDebug() << "Sending linear scan goal";
@@ -956,7 +1013,9 @@ void BackendController::sendLinearScanGoal()
     msg.start_lon = static_cast<int32_t>(startCoordinate().longitude() * 1e7);
     msg.end_lat = static_cast<int32_t>(endCoordinate().latitude() * 1e7);
     msg.end_lon = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
-    msg.angle = 0; // TODO support switching between 0 and 180
+    msg.angle = static_cast<uint32_t>(bearing_);
+    
+    setLinearScan(true);
     msg.percOverlap = overlap();
     sendGoal(msg);
 }

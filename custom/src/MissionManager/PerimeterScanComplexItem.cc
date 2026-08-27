@@ -31,6 +31,8 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
         _fileNameFact = customSettings->fileName();
         _numImagesFact = customSettings->numImages();
         _overlapFact = customSettings->overlap();
+        _bearingFact = customSettings->bearing();
+        _swapUavsFact = customSettings->swapUavs();
         connect(_sepDistFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
     } else {
         qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
@@ -65,11 +67,61 @@ void PerimeterScanComplexItem::sendLinearScanGoal() {
         return;
     }
 
-    backendController->setStartCoordinate(_corridorPolyline.vertexCoordinate(0));
+    QGeoCoordinate startCoord = _corridorPolyline.vertexCoordinate(0);
+    QGeoCoordinate endCoord = _corridorPolyline.vertexCoordinate(_corridorPolyline.count() - 1);
+
+    backendController->setStartCoordinate(startCoord);
     // For now, only send start and end. Intermediate points are ignored till the backend supports a linear scan path.
-    backendController->setEndCoordinate(_corridorPolyline.vertexCoordinate(_corridorPolyline.count() - 1));
+    backendController->setEndCoordinate(endCoord);
+
+    //get center point
+    backendController->setCenterCoordinate(lat_lon_midpoint(startCoord, endCoord));
+    
+    // get angle for drone positions
+    double start_stop_angle_deg = startCoord.azimuthTo(endCoord); 
+
+    double angle = angleWrap360(start_stop_angle_deg + 90.0);
+
+    if(swapUavs())
+    {
+        angle = angleWrap360(angle + 180);
+    }
+
+    _bearingFact->setRawValue(angle);
 
     backendController->sendLinearScanGoal();
+}
+
+QGeoCoordinate PerimeterScanComplexItem::lat_lon_midpoint(const QGeoCoordinate &a, const QGeoCoordinate &b)
+{
+    double lat1 = qDegreesToRadians(a.latitude());
+    double lon1 = qDegreesToRadians(a.longitude());
+    double lat2 = qDegreesToRadians(b.latitude());
+    double dLon = qDegreesToRadians(b.longitude() - a.longitude());
+
+    double bx = std::cos(lat2) * std::cos(dLon);
+    double by = std::cos(lat2) * std::sin(dLon);
+
+    double latM = std::atan2(std::sin(lat1) + std::sin(lat2),
+                              std::sqrt((std::cos(lat1) + bx) * (std::cos(lat1) + bx) + by * by));
+    double lonM = lon1 + std::atan2(by, std::cos(lat1) + bx);
+
+    return QGeoCoordinate(qRadiansToDegrees(latM), qRadiansToDegrees(lonM));
+}
+
+
+double PerimeterScanComplexItem::angleWrap360(double angle)
+{
+    double new_angle = angle;
+    while(new_angle > 360.0){
+        new_angle -= 360.0;
+    }
+
+    while(new_angle < 0.0){
+        new_angle += 360.0;
+    }
+
+    return new_angle;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -196,6 +248,26 @@ void PerimeterScanComplexItem::setSequenceNumber(int sequenceNumber)
         _sequenceNumber = sequenceNumber;
         emit sequenceNumberChanged(sequenceNumber);
         emit lastSequenceNumberChanged(lastSequenceNumber());
+    }
+}
+
+void PerimeterScanComplexItem::setSwapUavs(const bool swap)
+{
+    if(_swap_uavs != swap){
+
+        //make sure backend is available... we don't want to display them swapped if backend is not aware.
+        CustomPlugin* customPlugin = qobject_cast<CustomPlugin*>(QGCCorePlugin::instance());
+
+        BackendController* backendController = customPlugin ? customPlugin->backendController() : nullptr;
+        if (backendController == nullptr) {
+            qWarning() << "*** backend is null";
+            return;
+        }
+
+        _swap_uavs = swap;
+        
+        emit swapUavsChanged();
+        _swapUavsFact->setRawValue(swap);
     }
 }
 
