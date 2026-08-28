@@ -137,6 +137,7 @@ set(CUSTOM_SOURCES
 # Custom libraries to link
 set(CUSTOM_LIBRARIES
     CustomModule
+    CustomPlanModule
     ${GDAL_LIBRARIES}
     CACHE INTERNAL "" FORCE
 )
