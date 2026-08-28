@@ -87,30 +87,6 @@ Item {
 
             property int tileSize: 256
 
-            Connections {
-                target: typeof ortho !== "undefined" ? ortho : null
-
-                function onOrthoReadyChanged() {
-                    if (ortho.orthoReady) {
-                        // Switch to the CustomURL provider
-                        for (var i = 0; i < _mapControl.supportedMapTypes.length; i++) {
-                            if (_mapControl.supportedMapTypes[i].name === "CustomURL Custom") {
-                                _mapControl.activeMapType = _mapControl.supportedMapTypes[i]
-                                break
-                            }
-                        }
-                    } else {
-                        // Switch back to default
-                        for (var i = 0; i < _mapControl.supportedMapTypes.length; i++) {
-                            if (_mapControl.supportedMapTypes[i].name === "Bing Satellite") {
-                                _mapControl.activeMapType = _mapControl.supportedMapTypes[i]
-                                break
-                            }
-                        }
-                    }
-                }
-            }
-
             MapCircle {
                 center: backend.centerCoordinate
                 radius: backend.sepDistance / 2
