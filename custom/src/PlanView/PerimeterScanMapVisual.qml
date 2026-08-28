@@ -106,6 +106,32 @@ Item {
         }
     }
 
+    // --- Black dot in the center ---
+    MapQuickItem {
+        id: centerDot
+        objectName: "centerDot"
+        coordinate: _missionItem.centerCoordinate
+        anchorPoint.x: 10
+        anchorPoint.y: 10
+        sourceItem: Rectangle {
+            width: 20
+            height: 20
+            color: "black"
+            radius: width / 2
+
+            Text {
+                anchors.centerIn: parent
+                text: "C"
+                color: "white"
+                font.bold: true
+                font.pixelSize: 16
+            }
+        }
+
+        Component.onCompleted:   map.addMapItem(centerDot)
+        Component.onDestruction: map.removeMapItem(centerDot)
+    }
+
     // ----- polyline editing visuals (provides the Polyline Tools toolbar) -----
     QGCMapPolylineVisuals {
         id: perimeterScanPolylineVisuals

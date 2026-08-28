@@ -33,7 +33,11 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
         _overlapFact = customSettings->overlap();
         _bearingFact = customSettings->bearing();
         _swapUavsFact = customSettings->swapUavs();
+        _goalLatFact = customSettings->goalLat();
+        _goalLonFact = customSettings->goalLon();
         connect(_sepDistFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
+        connect(_goalLatFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updateCenterCoordinate);
+        connect(_goalLonFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updateCenterCoordinate);
     } else {
         qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
     }
@@ -90,6 +94,25 @@ void PerimeterScanComplexItem::sendLinearScanGoal() {
     _bearingFact->setRawValue(angle);
 
     backendController->sendLinearScanGoal();
+}
+
+void PerimeterScanComplexItem::setCenterCoordinate(const QGeoCoordinate &coord) {
+
+    if(_center_coordinate != coord)
+    {
+        _center_coordinate = coord;
+        emit centerCoordinateChanged();
+    }
+
+}
+void PerimeterScanComplexItem::updateCenterCoordinate() {
+    QGeoCoordinate newTarget(_goalLatFact->rawValue().toDouble(),
+                              _goalLonFact->rawValue().toDouble());
+
+    if (_center_coordinate != newTarget) {
+        _center_coordinate = newTarget;
+        emit centerCoordinateChanged();
+    }
 }
 
 QGeoCoordinate PerimeterScanComplexItem::lat_lon_midpoint(const QGeoCoordinate &a, const QGeoCoordinate &b)

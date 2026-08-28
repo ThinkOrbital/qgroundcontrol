@@ -796,6 +796,27 @@ void BackendController::setCenterCoordinate(const QGeoCoordinate &coord)
         emit centerCoordinateChanged();
         emit emitterGoalCoordChanged();
         emit detectorGoalCoordChanged();
+
+        if(linear_scan_)
+        {
+            double length_m = startCoordinate().distanceTo(endCoordinate())/2;
+            
+            QGeoCoordinate newStart;
+            QGeoCoordinate newEnd;
+
+            if(swap_uavs_){
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ - 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ + 90);
+            } else {
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ + 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ - 90);
+            }
+
+            setStartCoordinate(newStart);
+            emit startCoordinateChanged();
+            setEndCoordinate(newEnd);
+            emit endCoordinateChanged();
+        }
     }
 }
 

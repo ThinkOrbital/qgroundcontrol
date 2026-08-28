@@ -7,6 +7,8 @@ import QGroundControl.Controls
 import QGroundControl.FactControls
 import QGroundControl.FlightMap
 
+import QtPositioning
+
 /// \brief Editor panel for PerimeterScanComplexItem.
 ///
 /// Appears in the right-hand mission item list when the item is selected.
@@ -27,6 +29,8 @@ Rectangle {
     property real _fieldWidth: ScreenTools.defaultFontPixelWidth * 10.5
     property real _radius:     ScreenTools.defaultFontPixelWidth / 2
     property var _customSettings:  QGroundControl.corePlugin.customSettings
+    property var _targetLatFact: _customSettings.goalLat;
+    property var _targetLonFact: _customSettings.goalLon;
     property var _sepDistFact: _customSettings.separationDistance
     property var _targetAltFact: _customSettings.targetAlt
     property var _emAltOffsetFact: _customSettings.emAltOffset
@@ -65,6 +69,39 @@ Rectangle {
             rowSpacing:       _margin
             columns:          2
             visible:          missionItem.corridorPolyline.isValid
+
+            // -------- LATITUDE --------
+            QGCLabel {
+                Layout.columnSpan: 2
+                text: "Target Latitude:"
+                //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: false
+            }
+            FactTextField {
+                Layout.columnSpan: 2
+                Layout.fillWidth: true
+                fact: _customSettings.goalLat
+                unitsLabel: "deg"
+                showUnits: true
+            }
+
+            // -------- LONGITUDE --------
+            QGCLabel {
+                Layout.columnSpan: 2
+                text: "Target Longitude:"
+                //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: false
+            }
+
+            FactTextField {
+                Layout.columnSpan: 2
+                Layout.fillWidth: true
+                fact: _customSettings.goalLon
+                unitsLabel: "deg"
+                showUnits: true
+            }
 
             QGCLabel { text: qsTr("UAV Flight Altitude") }
             FactTextField {

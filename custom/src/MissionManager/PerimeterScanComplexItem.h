@@ -38,6 +38,7 @@ public:
     Q_PROPERTY(Fact *numImages READ numImages CONSTANT)
     Q_PROPERTY(Fact *overlap READ overlap CONSTANT)
     Q_PROPERTY(bool swapUavs READ swapUavs WRITE setSwapUavs NOTIFY swapUavsChanged)
+    Q_PROPERTY(QGeoCoordinate centerCoordinate READ centerCoordinate WRITE setCenterCoordinate NOTIFY centerCoordinateChanged)
 
     QGCMapPolyline *corridorPolyline(void) { return &_corridorPolyline; }
     QGCMapPolygon *offsetPolygon() { return &_offsetPolygon; }
@@ -56,6 +57,8 @@ public:
                                              const QGeoCoordinate &coordinate)  { _corridorPolyline.adjustVertex(vertexIndex, coordinate); }
     Q_INVOKABLE void sendLinearScanGoal();
     Q_INVOKABLE void setSwapUavs(const bool swap);
+    Q_INVOKABLE void setCenterCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void updateCenterCoordinate();
 
     static constexpr const char *canonicalName = "Perimeter Scan";
     static constexpr const char *jsonComplexItemTypeValue = "perimeterScan";
@@ -72,6 +75,7 @@ public:
     QString             mapVisualQML        () const final { return QStringLiteral("qrc:/qml/Custom/Plan/PerimeterScanMapVisual.qml"); }
 
     bool swapUavs() const { return _swap_uavs; }
+    QGeoCoordinate centerCoordinate() const { return _center_coordinate; }
     QGeoCoordinate lat_lon_midpoint(const QGeoCoordinate &a, const QGeoCoordinate &b);
     double angleWrap360(double angle);
 
@@ -107,6 +111,7 @@ public:
 
 signals:
     void  swapUavsChanged();
+    void centerCoordinateChanged();
 
 private slots:
     void _setDirty();
@@ -123,9 +128,13 @@ private:
     QGCMapPolygon _offsetPolygon; // The polygon that shows where the drones will fly during the scan
     QGCMapPolyline _corridorPolyline;
     SettingsFact _altitudeFact;
+
+    QGeoCoordinate _center_coordinate {40.0156293, -105.2207272};
     // These mirror Facts owned by CustomSettings (see constructor); they are
     // borrowed pointers, not locally-owned SettingsFacts, since PerimeterScan
     // has no metadata entries of its own for them.
+    Fact *_goalLatFact = nullptr;
+    Fact *_goalLonFact = nullptr;
     Fact *_sepDistFact = nullptr;
     Fact *_emAltOffsetFact = nullptr;
     Fact *_detectorXrayWindowFact = nullptr;

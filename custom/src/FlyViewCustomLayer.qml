@@ -188,7 +188,8 @@ Item {
                 }
                 FactTextField {
                     Layout.fillWidth: true
-                    text: backend.centerCoordinate.latitude.toFixed(7)
+                    text: _goalLatFact.value.toFixed(7)
+                    //text: backend.centerCoordinate.latitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
@@ -208,7 +209,8 @@ Item {
                 }
                 FactTextField {
                     Layout.fillWidth: true
-                    text: backend.centerCoordinate.longitude.toFixed(7)
+                    text: _goalLonFact.value.toFixed(7)
+                    //text: backend.centerCoordinate.longitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
