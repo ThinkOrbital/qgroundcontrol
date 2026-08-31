@@ -8,6 +8,7 @@
 #include "QGCLoggingCategory.h"
 #include "SettingsManager.h"
 #include "CustomPlugin.h"
+#include "CustomSettings.h"
 #include "BackendController.h"
 
 #include <QtCore/QJsonArray>
@@ -18,23 +19,23 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
                                                    bool flyView,
                                                    const QString &kmlOrShpFile)
     : ComplexMissionItem(masterController, flyView)
-    , _metaDataMap(FactMetaData::createMapFromJsonFile(
-          QStringLiteral(":/json/PerimeterScan.SettingsGroup.json"), this))
-    // , _altitudeFact(settingsGroup, _metaDataMap[QStringLiteral("Altitude")])
 {
     _editorQml = QStringLiteral("qrc:/qml/Custom/Plan/PerimeterScanEditor.qml");
 
-    // Initialise altitude from the application default.
-    // _altitudeFact.setRawValue(
-    //     SettingsManager::instance()->appSettings()->defaultMissionItemAltitude()->rawValue());
+    CustomPlugin *customPlugin = qobject_cast<CustomPlugin *>(QGCCorePlugin::instance());
+    CustomSettings *customSettings = customPlugin ? customPlugin->customSettings() : nullptr;
+    if (customSettings) {
+        _sepDistFact = customSettings->separationDistance();
+        _emAltOffsetFact = customSettings->emAltOffset();
+        _detectorXrayWindowFact = customSettings->detectorXrayWindow();
+        _fileNameFact = customSettings->fileName();
+        _numImagesFact = customSettings->numImages();
+        _overlapFact = customSettings->overlap();
+        connect(_sepDistFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
+    } else {
+        qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
+    }
 
-    // connect(&_altitudeFact, &Fact::valueChanged, this, [this]() {
-    //     _setDirty();
-    //     emit amslEntryAltChanged(amslEntryAlt());
-    //     emit amslExitAltChanged(amslExitAlt());
-    //     emit minAMSLAltitudeChanged();
-    //     emit maxAMSLAltitudeChanged();
-    // });
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_setDirty);
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_polylineChanged);
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
@@ -90,7 +91,6 @@ void PerimeterScanComplexItem::_polylineChanged()
 {
     _recalcScanDistance();
     emit coordinateChanged(coordinate());
-    // emit exitCoordinateChanged(exitCoordinate());
     emit specifiesCoordinateChanged();
     emit lastSequenceNumberChanged(lastSequenceNumber());
     emit readyForSaveStateChanged();
@@ -108,10 +108,14 @@ void PerimeterScanComplexItem::_rebuildOffsetPolygon()
         return;
     }
 
-    // TODO get width based on separation and offsets.
-    // Need to flip emitter/detector based on toggle in the menu for which is on which side of the line.
-    // double halfWidth = _corridorWidthFact.rawValue().toDouble() / 2.0; 
-    double halfWidth = 5.0;
+    if (sepDist() == nullptr) {
+        qCWarning(PerimeterScanLog) << "sepDist Fact is null, cannot rebuild offset polygon";
+        return;
+    }
+
+    // TODO use the emitter offset to offset the polygon
+    auto const halfWidth = sepDist()->rawValue().toDouble() / 2.0;
+    qWarning() << "*** _rebuildOffsetPolygon halfWidth =" << halfWidth;
 
     QList<QGeoCoordinate> firstSideVertices = _corridorPolyline.offsetPolyline(halfWidth);
     QList<QGeoCoordinate> secondSideVertices = _corridorPolyline.offsetPolyline(-halfWidth);
@@ -135,11 +139,7 @@ void PerimeterScanComplexItem::_rebuildOffsetPolygon()
 void PerimeterScanComplexItem::_recalcScanDistance()
 {
     _scanDistance = 0.0;
-    // const int count = _perimeterPolygon.count();
-    // for (int i = 0; i < count; ++i) {
-    //     _scanDistance += _perimeterPolygon.vertexCoordinate(i)
-    //                          .distanceTo(_perimeterPolygon.vertexCoordinate((i + 1) % count));
-    // }
+    // TODO remove or add support for scans
     emit complexDistanceChanged();
 }
 
@@ -155,10 +155,7 @@ QGeoCoordinate PerimeterScanComplexItem::coordinate() const
 
 QGeoCoordinate PerimeterScanComplexItem::exitCoordinate() const
 {
-    // const int count = _perimeterPolygon.count();
-    // if (count > 0) {
-    //     return _perimeterPolygon.vertexCoordinate(count - 1);
-    // }
+    // TODO remove
     return {};
 }
 
@@ -187,9 +184,7 @@ double PerimeterScanComplexItem::greatestDistanceTo(const QGeoCoordinate &other)
 {
     double maxDist = 0;
     (void) other;
-    // for (int i = 0; i < _perimeterPolygon.count(); ++i) {
-    //     maxDist = qMax(maxDist, _perimeterPolygon.vertexCoordinate(i).distanceTo(other));
-    // }
+    // TODO remove
     return maxDist;
 }
 
@@ -312,7 +307,6 @@ bool PerimeterScanComplexItem::load(const QJsonObject &complexObject,
 
     setSequenceNumber(sequenceNumber);
     _corridorPolyline.clear();
-    // _altitudeFact.setRawValue(complexObject[_jsonAltitudeKey].toDouble());
 
     if (!_corridorPolyline.loadFromJson(complexObject, true /* required */, errorString)) {
         return false;
