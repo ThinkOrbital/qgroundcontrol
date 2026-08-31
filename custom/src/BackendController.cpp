@@ -461,9 +461,21 @@ void BackendController::processTelemetryUpdates()
     
             bool all_subscribed = false;
             bool same_state = false;
+            bool ready_to_fly = false;
+
+            MultiVehicleManager* vehicleManager = MultiVehicleManager::instance();
+            Vehicle* vehicle = vehicleManager->getVehicleById(sysid);
+
+            if(vehicle->readyToFly())
+            {
+                this->ready_to_fly_.at(sysid) = true;
+            }
 
             all_subscribed = this->singleUAV_ ? 
                 this->subscribed_map_[SYSID_EMITTER] || this->subscribed_map_[SYSID_DETECTOR]: this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR];
+
+            ready_to_fly = this->singleUAV_ ?
+                this->ready_to_fly_.at(SYSID_EMITTER) || this->ready_to_fly_.at(SYSID_DETECTOR): this->ready_to_fly_.at(SYSID_EMITTER) && this->ready_to_fly_.at(SYSID_DETECTOR);
 
             switch(this->flight_state_map_[sysid])
             {
@@ -479,11 +491,16 @@ void BackendController::processTelemetryUpdates()
                         {
                             QString str_flight_status;
                             
-                            if(targMsgSent_ && calMsgSent_)
+                            if(targMsgSent_ && calMsgSent_ && ready_to_fly)
                             {
                                 str_flight_status = "Waiting for user to press start mission button.";
                                 this->setStartMissionButtonEn(true);
                                 
+                            } 
+
+                            if(targMsgSent_ && calMsgSent_ && !this->ready_to_fly_.at(sysid))
+                            {
+                                str_flight_status += "Vehicle " + std::to_string(+sysid) + " failed pre-arm checks! \n";
                             }
 
                             if(!targMsgSent_)

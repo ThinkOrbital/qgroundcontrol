@@ -500,6 +500,8 @@ private:
 
     std::map<uint8_t, FlightState> flight_state_map_;
 
+    std::map<uint8_t, bool> ready_to_fly_;
+
     QMap<uint8_t, qint64> heartbeat_last_seen_ms_;  // sysid → last heartbeat timestamp
     static constexpr int HEARTBEAT_TIMEOUT_MS = 5000; // 5 second timeout
   
