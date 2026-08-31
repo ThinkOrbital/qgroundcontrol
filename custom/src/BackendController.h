@@ -115,6 +115,7 @@ class BackendController : public QObject {
     //button enable/disable
     Q_PROPERTY(bool isStartMissionButtonEn READ isStartMissionButtonEn WRITE setStartMissionButtonEn NOTIFY startMissionButtonChanged);
     Q_PROPERTY(bool isResumeMissionButtonEn READ isResumeMissionButtonEn WRITE setResumeMissionButtonEn NOTIFY resumeMissionButtonChanged);
+    Q_PROPERTY(bool isCalibrateButtonEn READ isCalibrateButtonEn WRITE setCalibrateButtonEn NOTIFY calibrateButtonChanged);
     Q_PROPERTY(bool isStartScanButtonEn READ isStartScanButtonEn WRITE setStartScanButtonEn NOTIFY startScanButtonChanged);
     Q_PROPERTY(bool isStopScanButtonEn READ isStopScanButtonEn WRITE setStopScanButtonEn NOTIFY stopScanButtonChanged);
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
@@ -248,6 +249,7 @@ public:
 
     bool isStartMissionButtonEn() const { return this->isStartMissionButtonEn_; }
     bool isResumeMissionButtonEn() const { return this->isResumeMissionButtonEn_; }
+    bool isCalibrateButtonEn() const { return this->isCalibrateButtonEn_;}
     bool isStartScanButtonEn() const { return this->isStartScanButtonEn_; }
     bool isStopScanButtonEn() const { return this->isStopScanButtonEn_; }
     bool isSendGoalButtonEn() const { return this->isSendGoalButtonEn_; }
@@ -291,6 +293,7 @@ public:
     //enable/disable buttons
     Q_INVOKABLE void setStartMissionButtonEn(const bool enabled);
     Q_INVOKABLE void setResumeMissionButtonEn(const bool enabled);
+    Q_INVOKABLE void setCalibrateButtonEn(const bool enabled);
     Q_INVOKABLE void setStartScanButtonEn(const bool enabled);
     Q_INVOKABLE void setStopScanButtonEn(const bool enabled);
     Q_INVOKABLE void setSendGoalButtonEn(const bool enabled);
@@ -372,6 +375,7 @@ signals:
 
     void startMissionButtonChanged();
     void resumeMissionButtonChanged();
+    void calibrateButtonChanged();
     void startScanButtonChanged();
     void stopScanButtonChanged();
     void sendGoalButtonChanged();
@@ -436,6 +440,7 @@ private:
     bool scanMissionMode_ = {true};
     bool isStartMissionButtonEn_ = {false};
     bool isResumeMissionButtonEn_ = {false};
+    bool isCalibrateButtonEn_ = {false};
     bool isStartScanButtonEn_ = {false};
     bool isStopScanButtonEn_ = {false};
     bool isSendGoalButtonEn_ = {false};
@@ -494,6 +499,8 @@ private:
     std::map<uint8_t, AckType> msg_ack_map_;
 
     std::map<uint8_t, FlightState> flight_state_map_;
+
+    std::map<uint8_t, bool> ready_to_fly_;
 
     QMap<uint8_t, qint64> heartbeat_last_seen_ms_;  // sysid → last heartbeat timestamp
     static constexpr int HEARTBEAT_TIMEOUT_MS = 5000; // 5 second timeout

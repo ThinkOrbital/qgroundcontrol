@@ -50,7 +50,7 @@ Item {
             ? _vehicleEmitter.healthAndArmingCheckReport.canArm
             : !_vehicleEmitter.prearmError)
         : false
-    property bool _vehiclesReadyForMission: _detectorCanArm && _emitterCanArm
+    property bool _vehiclesReadyForMission: _detectorCanArm || _emitterCanArm
 
     // Nudge mode: 0 = Absolute (N/E/S/W), 1 = Relative (Fwd/Back/L/R) vs active vehicle heading
     property int nudgeMode: 0
@@ -633,7 +633,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Calibrate Payloads"
                 onClicked: backend.payloadCal()
-                enabled: _vehicleDetector && _vehicleEmitter && !_vehicleDetector.flying && !_vehicleEmitter.flying
+                enabled: backend.isCalibrateButtonEn
             }
 
             QGCButton {
@@ -822,7 +822,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
                 onClicked: backend.sendCenterGoal()
-                enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
+                enabled: backend.isSendGoalButtonEn 
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.6) : qgcPal.buttonBorder)
@@ -842,14 +842,14 @@ Item {
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.6) : qgcPal.buttonBorder)
                 }
             }
-            
-            QGCButton {
+
+            QGCDelayButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Start Mission"
-                onClicked: backend.startMission()
+                onActivated: backend.startMission()
                 enabled: backend.isStartMissionButtonEn && _vehiclesReadyForMission
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorGreen, 1.3) : qgcPal.button)
@@ -857,18 +857,18 @@ Item {
                 }
             }
 
-            QGCButton {
+            QGCDelayButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "End Mission"
-                onClicked: backend.endMission()
+                onActivated: backend.endMission()
                 enabled: backend.isEndMissionButtonEn
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.3) : qgcPal.button)
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorOrange, 1.6) : qgcPal.buttonBorder)
-                }           
+                }
             }
         }
     }
