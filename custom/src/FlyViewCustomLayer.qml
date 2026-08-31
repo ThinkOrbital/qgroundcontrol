@@ -755,7 +755,7 @@ Item {
                         Layout.preferredWidth: 60
                         unitsLabel: "m"
                         showUnits: true
-                        text: "0.5"
+                        text: "0.50"
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
