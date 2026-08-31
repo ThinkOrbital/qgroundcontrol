@@ -466,16 +466,18 @@ void BackendController::processTelemetryUpdates()
             MultiVehicleManager* vehicleManager = MultiVehicleManager::instance();
             Vehicle* vehicle = vehicleManager->getVehicleById(sysid);
 
+            this->ready_to_fly_[sysid] = false;
+
             if(vehicle->readyToFly())
             {
-                this->ready_to_fly_.at(sysid) = true;
+                this->ready_to_fly_[sysid] = true;
             }
 
             all_subscribed = this->singleUAV_ ? 
                 this->subscribed_map_[SYSID_EMITTER] || this->subscribed_map_[SYSID_DETECTOR]: this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR];
 
             ready_to_fly = this->singleUAV_ ?
-                this->ready_to_fly_.at(SYSID_EMITTER) || this->ready_to_fly_.at(SYSID_DETECTOR): this->ready_to_fly_.at(SYSID_EMITTER) && this->ready_to_fly_.at(SYSID_DETECTOR);
+                this->ready_to_fly_[SYSID_EMITTER] || this->ready_to_fly_[SYSID_DETECTOR]: this->ready_to_fly_[SYSID_EMITTER] && this->ready_to_fly_[SYSID_DETECTOR];
 
             switch(this->flight_state_map_[sysid])
             {
@@ -498,7 +500,7 @@ void BackendController::processTelemetryUpdates()
                                 
                             } 
 
-                            if(targMsgSent_ && calMsgSent_ && !this->ready_to_fly_.at(sysid))
+                            if(targMsgSent_ && calMsgSent_ && !this->ready_to_fly_[sysid])
                             {
                                 str_flight_status += "Vehicle " + std::to_string(+sysid) + " failed pre-arm checks! \n";
                             }
