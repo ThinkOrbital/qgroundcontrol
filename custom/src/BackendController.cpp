@@ -771,14 +771,6 @@ void BackendController::nudge(const double azimuth, const double distance)
     //center coordinate
     QGeoCoordinate newCoord = center_coordinate_.atDistanceAndAzimuth(distance, azimuth);
     setCenterCoordinate(newCoord);
-
-    if(linear_scan_) {
-        QGeoCoordinate newStartCoord = start_coordinate_.atDistanceAndAzimuth(distance, azimuth);
-        setStartCoordinate(newStartCoord);
-
-        QGeoCoordinate newEndCoord = end_coordinate_.atDistanceAndAzimuth(distance, azimuth);
-        setEndCoordinate(newEndCoord);
-    }
 }
 
 void BackendController::setScanMissionMode(const bool mode)
