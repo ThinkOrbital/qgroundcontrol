@@ -19,12 +19,13 @@
 enum class FlightState{no_conn, init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, linear_scan, test};
 
 enum class DetStatus : uint8_t {
-     no_connection = 0,
-     connected = 1,
-     connection_failed = 2,
-     capture_failed = 3,
-     xray_window_failed = 4,
-     offset_cal_failed = 5
+     idle = 0,
+     no_connection = 1,
+     connected = 2,
+     connection_failed = 3,
+     capture_failed = 4,
+     xray_window_failed = 5,
+     offset_cal_failed = 6
 };
 
 enum class StartMission : uint8_t {
