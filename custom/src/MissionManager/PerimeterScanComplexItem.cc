@@ -35,9 +35,20 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
         _swapUavsFact = customSettings->swapUavs();
         _goalLatFact = customSettings->goalLat();
         _goalLonFact = customSettings->goalLon();
+        _startLatFact = customSettings->startLat();
+        _startLonFact = customSettings->startLon();
+        _endLatFact = customSettings->endLat();
+        _endLonFact = customSettings->endLon();
+
+
         connect(_sepDistFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
         connect(_goalLatFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updateCenterCoordinate);
         connect(_goalLonFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updateCenterCoordinate);
+        connect(_startLatFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
+        connect(_startLonFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
+        connect(_endLatFact,   &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
+        connect(_endLonFact,   &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
+        // connect(_swapUavsFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::setSwapUavs);
     } else {
         qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
     }
@@ -45,6 +56,7 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_setDirty);
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_polylineChanged);
     connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::_rebuildOffsetPolygon);
+    connect(&_corridorPolyline, &QGCMapPolyline::pathChanged, this, &PerimeterScanComplexItem::updateStartEndCoordinate);
 
     if (!kmlOrShpFile.isEmpty()) {
         _corridorPolyline.loadKMLOrSHPFile(kmlOrShpFile);
@@ -74,12 +86,11 @@ void PerimeterScanComplexItem::sendLinearScanGoal() {
     QGeoCoordinate startCoord = _corridorPolyline.vertexCoordinate(0);
     QGeoCoordinate endCoord = _corridorPolyline.vertexCoordinate(_corridorPolyline.count() - 1);
 
-    backendController->setStartCoordinate(startCoord);
-    // For now, only send start and end. Intermediate points are ignored till the backend supports a linear scan path.
-    backendController->setEndCoordinate(endCoord);
+    _startLatFact->setRawValue(startCoord.latitude());
+    _startLonFact->setRawValue(startCoord.longitude());
 
-    //get center point
-    backendController->setCenterCoordinate(lat_lon_midpoint(startCoord, endCoord));
+    _endLatFact->setRawValue(endCoord.latitude());
+    _endLonFact->setRawValue(endCoord.longitude());
     
     // get angle for drone positions
     double start_stop_angle_deg = startCoord.azimuthTo(endCoord); 
@@ -100,6 +111,8 @@ void PerimeterScanComplexItem::setCenterCoordinate(const QGeoCoordinate &coord) 
 
     if(_center_coordinate != coord)
     {
+        _goalLatFact->setRawValue(coord.latitude());
+        _goalLonFact->setRawValue(coord.longitude());
         _center_coordinate = coord;
         emit centerCoordinateChanged();
     }
@@ -113,6 +126,49 @@ void PerimeterScanComplexItem::updateCenterCoordinate() {
         _center_coordinate = newTarget;
         emit centerCoordinateChanged();
     }
+}
+
+void PerimeterScanComplexItem::updatePolyline()
+{
+    if (_flyView || _corridorPolyline.count() < 2 || !_startLatFact) {
+        return;
+    }
+    QGeoCoordinate newStart(_startLatFact->rawValue().toDouble(), _startLonFact->rawValue().toDouble());
+    QGeoCoordinate newEnd(_endLatFact->rawValue().toDouble(), _endLonFact->rawValue().toDouble());
+
+    if (_corridorPolyline.vertexCoordinate(0) != newStart) {
+        _corridorPolyline.adjustVertex(0, newStart);
+    }
+    if (_corridorPolyline.vertexCoordinate(_corridorPolyline.count() - 1) != newEnd) {
+        _corridorPolyline.adjustVertex(_corridorPolyline.count() - 1, newEnd);
+    }
+}
+
+void PerimeterScanComplexItem::updateStartEndCoordinate() {
+
+    if (_flyView || _corridorPolyline.count() < 2 || !_startLatFact) {
+        return;
+    }
+    QGeoCoordinate start = _corridorPolyline.vertexCoordinate(0);
+    QGeoCoordinate end   = _corridorPolyline.vertexCoordinate(_corridorPolyline.count() - 1);
+
+    _startLatFact->setRawValue(start.latitude());
+    _startLonFact->setRawValue(start.longitude());
+    _endLatFact->setRawValue(end.latitude());
+    _endLonFact->setRawValue(end.longitude());
+
+    setCenterCoordinate(lat_lon_midpoint(start, end));
+        // get angle for drone positions
+    double start_stop_angle_deg = start.azimuthTo(end); 
+
+    double angle = angleWrap360(start_stop_angle_deg + 90.0);
+
+    if(swapUavs())
+    {
+        angle = angleWrap360(angle + 180);
+    }
+
+    _bearingFact->setRawValue(angle);
 }
 
 QGeoCoordinate PerimeterScanComplexItem::lat_lon_midpoint(const QGeoCoordinate &a, const QGeoCoordinate &b)
@@ -277,16 +333,6 @@ void PerimeterScanComplexItem::setSequenceNumber(int sequenceNumber)
 void PerimeterScanComplexItem::setSwapUavs(const bool swap)
 {
     if(_swap_uavs != swap){
-
-        //make sure backend is available... we don't want to display them swapped if backend is not aware.
-        CustomPlugin* customPlugin = qobject_cast<CustomPlugin*>(QGCCorePlugin::instance());
-
-        BackendController* backendController = customPlugin ? customPlugin->backendController() : nullptr;
-        if (backendController == nullptr) {
-            qWarning() << "*** backend is null";
-            return;
-        }
-
         _swap_uavs = swap;
         
         emit swapUavsChanged();

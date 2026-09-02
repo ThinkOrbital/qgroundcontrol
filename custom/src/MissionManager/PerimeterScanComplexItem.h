@@ -59,6 +59,8 @@ public:
     Q_INVOKABLE void setSwapUavs(const bool swap);
     Q_INVOKABLE void setCenterCoordinate(const QGeoCoordinate &coord);
     Q_INVOKABLE void updateCenterCoordinate();
+    Q_INVOKABLE void updateStartEndCoordinate();
+    Q_INVOKABLE void updatePolyline();
 
     static constexpr const char *canonicalName = "Perimeter Scan";
     static constexpr const char *jsonComplexItemTypeValue = "perimeterScan";
@@ -135,6 +137,10 @@ private:
     // has no metadata entries of its own for them.
     Fact *_goalLatFact = nullptr;
     Fact *_goalLonFact = nullptr;
+    Fact *_startLatFact = nullptr;
+    Fact *_startLonFact = nullptr;
+    Fact *_endLatFact = nullptr;
+    Fact *_endLonFact = nullptr;
     Fact *_sepDistFact = nullptr;
     Fact *_emAltOffsetFact = nullptr;
     Fact *_detectorXrayWindowFact = nullptr;

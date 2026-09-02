@@ -51,7 +51,6 @@ BackendController::BackendController(QObject *parent)
         if (v) _vehicleAdded(v);
     }
 
- 
     // Process telemetry updates at 10 Hz (every 100ms)
     QTimer *telemetryTimer = new QTimer(this);
     connect(telemetryTimer, &QTimer::timeout, this, &BackendController::processTelemetryUpdates);
@@ -152,7 +151,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_cooperative_state_t coop_state;
                 mavlink_msg_cooperative_state_decode(&message, &coop_state);
                 // store/emit based on sysid
-                // qDebug() << "Received coop state of " << coop_state.state << " from sysid " << message.compid;
                 FlightState state = static_cast<FlightState>(coop_state.state);
 
                 if(this->flight_state_map_[message.sysid] != state)
@@ -161,7 +159,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                     this->uav_state_updated_.store(true);
                     if(this->flight_state_map_[message.sysid] == FlightState::operator_input) 
                     {
-                        // qDebug() << "Sending out Acknowledge message";
                         this->send_ack(AckType::ack_coop_opin, message.sysid);
                     }
                 }
@@ -172,9 +169,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
             case MAVLINK_MSG_ID_EM_STATUS: {
                 mavlink_em_status_t em_status;
                 mavlink_msg_em_status_decode(&message, &em_status);
-
-                // qDebug() << "Received em status";
-                
                 
                 this->em_telemetry_.HVvoltage_V = em_status.em_hv_voltage_v;
                 this->em_telemetry_.HVcurrent_uA = em_status.em_hv_current_uA;
@@ -191,8 +185,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
             case MAVLINK_MSG_ID_DET_STATUS: {
                 mavlink_det_status_t det_status;
                 mavlink_msg_det_status_decode(&message, &det_status);
-                
-                // qDebug() << "Received det status";
 
                 // this->det_status_ = static_cast<DetStatus>(det_status.det_state);
                 this->det_versions_ = det_status.det_version;
@@ -340,10 +332,17 @@ void BackendController::processTelemetryUpdates()
         {
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time = current_time - this->targ_msg_time_;        
-            if(elapsed_time >= std::chrono::seconds(1))
+            if(elapsed_time >= std::chrono::seconds(2))
             {   
                 //resend target message
-                this->sendCenterGoal();
+                if(linear_scan_)
+                {
+                    this->sendLinearScanGoal();
+                }
+                else
+                {
+                    this->sendCenterGoal();
+                }
                 qDebug() << "Resend target message";
             }
         }
@@ -419,8 +418,6 @@ void BackendController::processTelemetryUpdates()
             {
                 case FlightState::init: //init state
                 {
-                    // qDebug() << "Inside of init state";
-                    // qDebug() << "subscribed_map_[" << +sysid << "] = " << subscribed_map_[sysid];
                     if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
                     {
                         if((this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::init))
@@ -805,10 +802,21 @@ void BackendController::setCenterCoordinate(const QGeoCoordinate &coord)
             }
 
             setStartCoordinate(newStart);
+
             emit startCoordinateChanged();
             setEndCoordinate(newEnd);
             emit endCoordinateChanged();
         }
+    }
+}
+
+void BackendController::updateCenterCoordinate(const QGeoCoordinate &coord)
+{
+    if (center_coordinate_ != coord) {
+        center_coordinate_ = coord;
+        emit centerCoordinateChanged();
+        emit emitterGoalCoordChanged();
+        emit detectorGoalCoordChanged();
     }
 }
 
@@ -875,6 +883,16 @@ void BackendController::setBearing(const double bearing)
             emit endCoordinateChanged();
         }
 
+    }
+}
+
+void::BackendController::updateBearing(const double bearing)
+{
+    if (bearing_ != bearing) {
+        bearing_ = bearing;
+        emit bearingChanged();
+        emit emitterGoalCoordChanged();
+        emit detectorGoalCoordChanged();
     }
 }
 

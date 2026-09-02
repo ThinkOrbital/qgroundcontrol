@@ -115,7 +115,7 @@ Item {
                 color:   "#4000FF00"
                 border.width: 2
                 border.color: "#00FF00"
-                visible: backend.planUploaded
+                visible: backend.planUploaded && backend.linearScan
             }
                 
             MapCircle {

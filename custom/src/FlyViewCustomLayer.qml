@@ -243,12 +243,30 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                FactTextField {
+
+                QGCTextField {
+                    id: bearingField
                     Layout.fillWidth: true
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
-                    fact: _bearingFact
+                    text: backend.bearing.toFixed(1)
+                    validator: DoubleValidator { bottom: 0; top: 360; decimals: 1; notation: DoubleValidator.StandardNotation }
+
+                    onEditingFinished: {
+                        var newBearing = parseFloat(text)
+                        if (!isNaN(newBearing)) {
+                            backend.setBearing(newBearing)   // NOT backend.bearing = newBearing via the Fact
+                        }
+                    }
+
+                    Connections {
+                        target: backend
+                        function onBearingChanged() {
+                            if (!bearingField.activeFocus) {
+                                bearingField.text = backend.bearing.toFixed(1)
+                            }
+                        }
+                    }
                 }
 
                 // -------- DETECTOR POS OFFSET --------
