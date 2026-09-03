@@ -7,6 +7,8 @@ import QGroundControl.Controls
 import QGroundControl.FactControls
 import QGroundControl.FlightMap
 
+import QtPositioning
+
 /// \brief Editor panel for PerimeterScanComplexItem.
 ///
 /// Appears in the right-hand mission item list when the item is selected.
@@ -27,6 +29,8 @@ Rectangle {
     property real _fieldWidth: ScreenTools.defaultFontPixelWidth * 10.5
     property real _radius:     ScreenTools.defaultFontPixelWidth / 2
     property var _customSettings:  QGroundControl.corePlugin.customSettings
+    property var _targetLatFact: _customSettings.goalLat;
+    property var _targetLonFact: _customSettings.goalLon;
     property var _sepDistFact: _customSettings.separationDistance
     property var _targetAltFact: _customSettings.targetAlt
     property var _emAltOffsetFact: _customSettings.emAltOffset
@@ -66,17 +70,57 @@ Rectangle {
             columns:          2
             visible:          missionItem.corridorPolyline.isValid
 
-            QGCLabel { text: qsTr("UAV Flight Altitude") }
+            // -------- LATITUDE --------
+            QGCLabel {
+                Layout.columnSpan: 2
+                text: "Target Latitude:"
+                //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: false
+            }
             FactTextField {
-                fact: _flightAltFact
-                Layout.preferredWidth: _fieldWidth
+                Layout.columnSpan: 2
+                Layout.preferredWidth: _fieldWidth * 2
+                fact: _customSettings.goalLat
+                unitsLabel: "deg"
                 showUnits: true
             }
 
-            QGCLabel { text: qsTr("UAV-UAV Separation (m)") }
+            // -------- LONGITUDE --------
+            QGCLabel {
+                Layout.columnSpan: 2
+                text: "Target Longitude:"
+                //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: false
+            }
+
+            FactTextField {
+                Layout.columnSpan: 2
+                Layout.preferredWidth: _fieldWidth * 2
+                fact: _customSettings.goalLon
+                unitsLabel: "deg"
+                showUnits: true
+            }
+
+            QGCLabel {
+                text: "UAV Flight Altitude" 
+                Layout.fillWidth: false
+            }
+
+            FactTextField {
+                fact: _flightAltFact
+                Layout.preferredWidth: _fieldWidth*0.8
+                
+                unitsLabel: "m"
+                showUnits: true
+            }
+
+            QGCLabel { text: qsTr("UAV-UAV Separation") 
+            Layout.fillWidth: false}
             FactTextField {
                 fact: _sepDistFact
-                Layout.preferredWidth: _fieldWidth
+                Layout.preferredWidth: _fieldWidth*0.8
                 unitsLabel: "m"
                 showUnits: true
             }
@@ -84,14 +128,15 @@ Rectangle {
             QGCLabel { text: qsTr("Target Altitude") }
             FactTextField {
                 fact: _targetAltFact
-                Layout.preferredWidth: _fieldWidth
+                Layout.preferredWidth: _fieldWidth*0.8
+                unitsLabel: "m"
                 showUnits: true
             }
 
             QGCLabel { text: qsTr("Emitter Altitude offset") }
             FactTextField {
                 fact: _emAltOffsetFact
-                Layout.preferredWidth: _fieldWidth
+                Layout.preferredWidth: _fieldWidth*0.8
                 unitsLabel: "m"
                 showUnits: true
             }
@@ -99,41 +144,49 @@ Rectangle {
             QGCLabel { text: qsTr("Flight Velocity") }
             FactTextField {
                 fact: _flightVelFact
-                Layout.preferredWidth: _fieldWidth
-                unitsLabel: "m"
+                Layout.preferredWidth: _fieldWidth*0.8
+                unitsLabel: "m/s"
                 showUnits: true
             }
 
             QGCLabel { text: qsTr("X-ray window") }
             FactTextField {
                 fact: _detectorXrayWindowFact
-                Layout.preferredWidth: _fieldWidth
-                unitsLabel: "m"
+                Layout.preferredWidth: _fieldWidth*0.8
+                unitsLabel: "ms"
                 showUnits: true
             }
 
             QGCLabel { text: qsTr("Number of Images") }
             FactTextField {
                 fact: _numImagesFact
-                Layout.preferredWidth: _fieldWidth
-                unitsLabel: "m"
-                showUnits: true
+                Layout.preferredWidth: _fieldWidth*0.8
             }
 
             QGCLabel { text: qsTr("File Name") }
             FactTextField {
                 fact: _fileNameFact
-                Layout.preferredWidth: _fieldWidth
-                unitsLabel: "m"
-                showUnits: true
+                Layout.preferredWidth: _fieldWidth*0.8
             }
 
             QGCLabel { text: qsTr("Percent Overlap") }
             FactTextField {
                 fact: _overlapFact
-                Layout.preferredWidth: _fieldWidth
+                Layout.preferredWidth: _fieldWidth*0.8
                 unitsLabel: "%"
                 showUnits: true
+            }
+
+            QGCCheckBox {
+                id: swapCheckbox
+                Layout.columnSpan: 2
+                Layout.alignment: Qt.AlignHCenter
+                text:    qsTr("Swap UAVs")
+                checked: missionItem.swapUavs
+                
+                onToggled: {
+                    missionItem.setSwapUavs(swapCheckbox.checked)
+                }
             }
 
             QGCButton {

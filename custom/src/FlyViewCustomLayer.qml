@@ -188,7 +188,8 @@ Item {
                 }
                 FactTextField {
                     Layout.fillWidth: true
-                    text: backend.centerCoordinate.latitude.toFixed(7)
+                    text: _goalLatFact.value.toFixed(7)
+                    //text: backend.centerCoordinate.latitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
@@ -208,7 +209,8 @@ Item {
                 }
                 FactTextField {
                     Layout.fillWidth: true
-                    text: backend.centerCoordinate.longitude.toFixed(7)
+                    text: _goalLonFact.value.toFixed(7)
+                    //text: backend.centerCoordinate.longitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
@@ -241,12 +243,30 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                FactTextField {
+
+                QGCTextField {
+                    id: bearingField
                     Layout.fillWidth: true
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
-                    fact: _bearingFact
+                    text: backend.bearing.toFixed(1)
+                    validator: DoubleValidator { bottom: 0; top: 360; decimals: 1; notation: DoubleValidator.StandardNotation }
+
+                    onEditingFinished: {
+                        var newBearing = parseFloat(text)
+                        if (!isNaN(newBearing)) {
+                            backend.setBearing(newBearing)   // NOT backend.bearing = newBearing via the Fact
+                        }
+                    }
+
+                    Connections {
+                        target: backend
+                        function onBearingChanged() {
+                            if (!bearingField.activeFocus) {
+                                bearingField.text = backend.bearing.toFixed(1)
+                            }
+                        }
+                    }
                 }
 
                 // -------- DETECTOR POS OFFSET --------
@@ -815,13 +835,30 @@ Item {
             }   
             // ================= MISSION BUTTONS =================
   
+            QGCCheckBox {
+                id: multiScanCheckbox
+                Layout.columnSpan: 2
+                Layout.alignment: Qt.AlignHCenter
+                text:    qsTr("Multi-Scan Mission")
+                checked: backend.linearScan
+                
+                onToggled: {
+                    backend.setLinearScan(multiScanCheckbox.checked)
+                }
+            }
+
+            FactCheckBox {
+                fact: _customSettings.swapUavs
+                text: qsTr("Swap UAVs")
+            }
+
             QGCButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
-                onClicked: backend.sendCenterGoal()
+                onClicked: backend.linearScan ? backend.sendLinearScanGoal() : backend.sendCenterGoal()
                 enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)

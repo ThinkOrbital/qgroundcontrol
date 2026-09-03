@@ -92,6 +92,7 @@ class BackendController : public QObject {
     Q_PROPERTY(QGeoCoordinate centerCoordinate READ centerCoordinate WRITE setCenterCoordinate NOTIFY centerCoordinateChanged)
     Q_PROPERTY(QGeoCoordinate startCoordinate READ startCoordinate WRITE setStartCoordinate NOTIFY startCoordinateChanged)
     Q_PROPERTY(QGeoCoordinate endCoordinate READ endCoordinate WRITE setEndCoordinate NOTIFY endCoordinateChanged)
+    Q_PROPERTY(bool linearScan READ linearScan WRITE setLinearScan NOTIFY linearScanChanged)
     Q_PROPERTY(uint8_t overlap READ overlap WRITE setOverlap NOTIFY overlapChanged)
     Q_PROPERTY(double sepDistance READ sepDistance WRITE setSepDistance NOTIFY sepDistanceChanged)
     Q_PROPERTY(double bearing READ bearing WRITE setBearing NOTIFY bearingChanged)
@@ -146,7 +147,7 @@ class BackendController : public QObject {
     Q_PROPERTY(QString flightStatus READ flightStatus WRITE setFlightStatus NOTIFY flightStatusChanged)
 
     Q_PROPERTY(uint8_t nudgeMode READ nudgeMode WRITE setNudgeMode NOTIFY nudgeModeChanged)
-
+    Q_PROPERTY(bool swapUavs READ swapUavs WRITE setSwapUavs NOTIFY swapUavsChanged);
 
 public:
     explicit BackendController(QObject *parent = nullptr);
@@ -157,6 +158,8 @@ public:
     uint8_t overlap() const { return overlap_; }
     double sepDistance() const { return sep_distance_; }
     double bearing() const { return bearing_; }
+    bool swapUavs() const { return swap_uavs_; }
+    bool linearScan() const {return linear_scan_;}
     double targetAlt() const { return target_alt_; }
     double detOffset() const { return detOffset_; }
     double emAltOffset() const { return emAltOffset_; }
@@ -321,7 +324,10 @@ public:
     Q_INVOKABLE void killScan();
     Q_INVOKABLE void emTubeSeasoning();
     Q_INVOKABLE void payloadCal();
- 
+    Q_INVOKABLE void setSwapUavs(const bool swap);
+    Q_INVOKABLE void setLinearScan(const bool linear_scan);
+    Q_INVOKABLE void updateCenterCoordinate(const QGeoCoordinate &coord);
+    Q_INVOKABLE void updateBearing(const double bearing);
 
     //payload settings
     Q_INVOKABLE void setCadence(const uint32_t telemCadence);
@@ -349,6 +355,7 @@ signals:
     void onConnectionStateChange(bool connected, uint8_t sysid);
     void centerCoordinateChanged();
     void startCoordinateChanged();
+    void linearScanChanged();
     void overlapChanged();
     void endCoordinateChanged();
     void sepDistanceChanged();
@@ -409,6 +416,7 @@ signals:
 
     void flightStatusChanged();
     void nudgeModeChanged(uint8_t nudgeMode);
+    void swapUavsChanged();
 
 private slots:
     void _mavlinkMessageReceived(LinkInterface* link, mavlink_message_t message);
@@ -433,6 +441,9 @@ private:
     double emAltOffset_ {0.5};
     double flight_alt_ {10.0};
     double flight_vel_ {3.0};
+
+    bool swap_uavs_ = false;
+    bool linear_scan_ = false;
 
     bool scanMissionMode_ = {true};
     bool isStartMissionButtonEn_ = {false};

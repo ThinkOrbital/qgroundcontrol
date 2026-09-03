@@ -51,7 +51,6 @@ BackendController::BackendController(QObject *parent)
         if (v) _vehicleAdded(v);
     }
 
- 
     // Process telemetry updates at 10 Hz (every 100ms)
     QTimer *telemetryTimer = new QTimer(this);
     connect(telemetryTimer, &QTimer::timeout, this, &BackendController::processTelemetryUpdates);
@@ -152,7 +151,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_cooperative_state_t coop_state;
                 mavlink_msg_cooperative_state_decode(&message, &coop_state);
                 // store/emit based on sysid
-                // qDebug() << "Received coop state of " << coop_state.state << " from sysid " << message.compid;
                 FlightState state = static_cast<FlightState>(coop_state.state);
 
                 if(this->flight_state_map_[message.sysid] != state)
@@ -161,7 +159,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                     this->uav_state_updated_.store(true);
                     if(this->flight_state_map_[message.sysid] == FlightState::operator_input) 
                     {
-                        // qDebug() << "Sending out Acknowledge message";
                         this->send_ack(AckType::ack_coop_opin, message.sysid);
                     }
                 }
@@ -172,9 +169,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
             case MAVLINK_MSG_ID_EM_STATUS: {
                 mavlink_em_status_t em_status;
                 mavlink_msg_em_status_decode(&message, &em_status);
-
-                // qDebug() << "Received em status";
-                
                 
                 this->em_telemetry_.HVvoltage_V = em_status.em_hv_voltage_v;
                 this->em_telemetry_.HVcurrent_uA = em_status.em_hv_current_uA;
@@ -191,8 +185,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
             case MAVLINK_MSG_ID_DET_STATUS: {
                 mavlink_det_status_t det_status;
                 mavlink_msg_det_status_decode(&message, &det_status);
-                
-                // qDebug() << "Received det status";
 
                 // this->det_status_ = static_cast<DetStatus>(det_status.det_state);
                 this->det_versions_ = det_status.det_version;
@@ -340,10 +332,17 @@ void BackendController::processTelemetryUpdates()
         {
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time = current_time - this->targ_msg_time_;        
-            if(elapsed_time >= std::chrono::seconds(1))
+            if(elapsed_time >= std::chrono::seconds(2))
             {   
                 //resend target message
-                this->sendCenterGoal();
+                if(linear_scan_)
+                {
+                    this->sendLinearScanGoal();
+                }
+                else
+                {
+                    this->sendCenterGoal();
+                }
                 qDebug() << "Resend target message";
             }
         }
@@ -419,8 +418,6 @@ void BackendController::processTelemetryUpdates()
             {
                 case FlightState::init: //init state
                 {
-                    // qDebug() << "Inside of init state";
-                    // qDebug() << "subscribed_map_[" << +sysid << "] = " << subscribed_map_[sysid];
                     if(this->subscribed_map_[SYSID_EMITTER] && this->subscribed_map_[SYSID_DETECTOR])
                     {
                         if((this->flight_state_map_[SYSID_EMITTER] == FlightState::init) && (this->flight_state_map_[SYSID_DETECTOR] == FlightState::init))
@@ -767,6 +764,8 @@ void BackendController::processTelemetryUpdates()
 
 void BackendController::nudge(const double azimuth, const double distance)
 {
+    
+    //center coordinate
     QGeoCoordinate newCoord = center_coordinate_.atDistanceAndAzimuth(distance, azimuth);
     setCenterCoordinate(newCoord);
 }
@@ -780,6 +779,38 @@ void BackendController::setScanMissionMode(const bool mode)
 }
 
 void BackendController::setCenterCoordinate(const QGeoCoordinate &coord)
+{
+    if (center_coordinate_ != coord) {
+        center_coordinate_ = coord;
+        emit centerCoordinateChanged();
+        emit emitterGoalCoordChanged();
+        emit detectorGoalCoordChanged();
+
+        if(linear_scan_)
+        {
+            double length_m = startCoordinate().distanceTo(endCoordinate())/2;
+            
+            QGeoCoordinate newStart;
+            QGeoCoordinate newEnd;
+
+            if(swap_uavs_){
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ - 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ + 90);
+            } else {
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ + 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ - 90);
+            }
+
+            setStartCoordinate(newStart);
+
+            emit startCoordinateChanged();
+            setEndCoordinate(newEnd);
+            emit endCoordinateChanged();
+        }
+    }
+}
+
+void BackendController::updateCenterCoordinate(const QGeoCoordinate &coord)
 {
     if (center_coordinate_ != coord) {
         center_coordinate_ = coord;
@@ -830,6 +861,54 @@ void BackendController::setBearing(const double bearing)
         emit bearingChanged();
         emit emitterGoalCoordChanged();
         emit detectorGoalCoordChanged();
+
+        if(linear_scan_)
+        {
+            double length_m = startCoordinate().distanceTo(endCoordinate())/2;
+            
+            QGeoCoordinate newStart;
+            QGeoCoordinate newEnd;
+
+            if(swap_uavs_){
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
+            } else {
+                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
+                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
+            }
+
+            setStartCoordinate(newStart);
+            emit startCoordinateChanged();
+            setEndCoordinate(newEnd);
+            emit endCoordinateChanged();
+        }
+
+    }
+}
+
+void::BackendController::updateBearing(const double bearing)
+{
+    if (bearing_ != bearing) {
+        bearing_ = bearing;
+        emit bearingChanged();
+        emit emitterGoalCoordChanged();
+        emit detectorGoalCoordChanged();
+    }
+}
+
+void::BackendController::setSwapUavs(const bool swap)
+{
+    if(swap_uavs_ != swap)
+    {
+        qDebug() << "setting Swap UAVs to " << swap;
+        // I'm assuming atDistanceAndAzimuth already deals with angle windup
+        // Note: we do not want to call setBearing, as this will also move the start/end coordinates
+        bearing_ = bearing_ + 180;
+        emit bearingChanged();
+        emit emitterGoalCoordChanged();
+        emit detectorGoalCoordChanged();
+        
+        swap_uavs_ = swap;
     }
 }
 
@@ -946,6 +1025,15 @@ void BackendController::sendCenterGoal()
     sendGoal(msg);
 }
 
+void BackendController::setLinearScan(bool linear_scan)
+{
+    if(this->linear_scan_ != linear_scan)
+    {
+        this->linear_scan_ = linear_scan;
+        emit linearScanChanged();
+    }
+}
+
 void BackendController::sendLinearScanGoal()
 {
     qDebug() << "Sending linear scan goal";
@@ -956,7 +1044,9 @@ void BackendController::sendLinearScanGoal()
     msg.start_lon = static_cast<int32_t>(startCoordinate().longitude() * 1e7);
     msg.end_lat = static_cast<int32_t>(endCoordinate().latitude() * 1e7);
     msg.end_lon = static_cast<int32_t>(endCoordinate().longitude() * 1e7);
-    msg.angle = 0; // TODO support switching between 0 and 180
+    msg.angle = static_cast<uint32_t>(bearing_);
+    
+    setLinearScan(true);
     msg.percOverlap = overlap();
     sendGoal(msg);
 }

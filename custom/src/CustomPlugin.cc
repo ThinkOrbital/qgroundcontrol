@@ -67,20 +67,27 @@ void CustomPlugin::_wireCustomSettingsToBackend()
     Fact *flightVelFact = _customSettings->flightVel();
     Fact *goalLatFact = _customSettings->goalLat();
     Fact *goalLonFact = _customSettings->goalLon();
+    Fact *startLatFact = _customSettings->startLat();
+    Fact *startLonFact = _customSettings->startLon();
+    Fact *endLatFact = _customSettings->endLat();
+    Fact *endLonFact = _customSettings->endLon();
     Fact *numImagesFact = _customSettings->numImages();
     Fact *fileNameFact = _customSettings->fileName();
     Fact *xrayWindowFact = _customSettings->detectorXrayWindow();
     Fact *overlapFact = _customSettings->overlap();
+    Fact *swapUavsFact = _customSettings->swapUavs();
 
     _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
     connect(sepDistFact, &Fact::valueChanged, _backendController, [this, sepDistFact]() {
         _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
     });
 
-    _backendController->setBearing(bearingFact->rawValue().toDouble());
+    _backendController->updateBearing(bearingFact->rawValue().toDouble());
     connect(bearingFact, &Fact::valueChanged, _backendController, [this, bearingFact]() {
-        _backendController->setBearing(bearingFact->rawValue().toDouble());
+        _backendController->updateBearing(bearingFact->rawValue().toDouble());
     });
+
+
 
     _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
     connect(targetAltFact, &Fact::valueChanged, _backendController, [this, targetAltFact]() {
@@ -127,15 +134,41 @@ void CustomPlugin::_wireCustomSettingsToBackend()
         _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
     });
 
+    _backendController->setSwapUavs(static_cast<bool>(swapUavsFact->rawValue().toBool()));
+    connect(swapUavsFact, &Fact::valueChanged, _backendController, [this, swapUavsFact]() {
+        _backendController->setSwapUavs(static_cast<bool>(swapUavsFact->rawValue().toBool()));
+    });
+
     // goalLat/goalLon combine into one QGeoCoordinate-typed property
     auto updateCenterCoordinate = [this, goalLatFact, goalLonFact]() {
-        _backendController->setCenterCoordinate(QGeoCoordinate(
+        _backendController->updateCenterCoordinate(QGeoCoordinate(
             goalLatFact->rawValue().toDouble(),
             goalLonFact->rawValue().toDouble()));
     };
     updateCenterCoordinate(); // seed initial value
+
+    // startLat/startLon combine into one QGeoCoordinate-typed property
+    auto updateStartCoordinate = [this, startLatFact, startLonFact]() {
+        _backendController->setStartCoordinate(QGeoCoordinate(
+            startLatFact->rawValue().toDouble(),
+            startLonFact->rawValue().toDouble()));
+    };
+    updateStartCoordinate(); // seed initial value
+
+    // endLat/endLon combine into one QGeoCoordinate-typed property
+    auto updateEndCoordinate = [this, endLatFact, endLonFact]() {
+        _backendController->setEndCoordinate(QGeoCoordinate(
+            endLatFact->rawValue().toDouble(),
+            endLonFact->rawValue().toDouble()));
+    };
+    updateEndCoordinate(); // seed initial value
+
     connect(goalLatFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
     connect(goalLonFact, &Fact::valueChanged, _backendController, updateCenterCoordinate);
+    connect(startLatFact, &Fact::valueChanged, _backendController, updateStartCoordinate);
+    connect(startLonFact, &Fact::valueChanged, _backendController, updateStartCoordinate);
+    connect(endLatFact, &Fact::valueChanged, _backendController, updateEndCoordinate);
+    connect(endLonFact, &Fact::valueChanged, _backendController, updateEndCoordinate);
 
     // In order for the center coordinate fact to persist a reboot of QGC, save the fact.
     connect(_backendController, &BackendController::centerCoordinateChanged, this, [this, goalLatFact, goalLonFact]() {
@@ -143,6 +176,23 @@ void CustomPlugin::_wireCustomSettingsToBackend()
         goalLatFact->setRawValue(coord.latitude());
         goalLonFact->setRawValue(coord.longitude());
     });
+
+    connect(_backendController, &BackendController::startCoordinateChanged, this, [this, startLatFact, startLonFact]() {
+        const QGeoCoordinate coord = _backendController->startCoordinate();
+        startLatFact->setRawValue(coord.latitude());
+        startLonFact->setRawValue(coord.longitude());
+    });
+
+    connect(_backendController, &BackendController::endCoordinateChanged, this, [this, endLatFact, endLonFact]() {
+        const QGeoCoordinate coord = _backendController->endCoordinate();
+        endLatFact->setRawValue(coord.latitude());
+        endLonFact->setRawValue(coord.longitude());
+    });
+
+    connect(_backendController, &BackendController::swapUavsChanged, this, [this, swapUavsFact]() {
+        swapUavsFact->setRawValue(_backendController->swapUavs());
+    });
+
 }
 
 QGCCorePlugin *CustomPlugin::instance()
