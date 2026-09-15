@@ -9,12 +9,20 @@
 #include <QQuaternion>
 #include <QDateTime>
 #include <QMap>
+#include <QRegularExpression>
 
 #include "QGCApplication.h"
 #include "MultiVehicleManager.h"
 #include "Vehicle.h"
 #include "mavlink.h"
 #include "MAVLinkProtocol.h"
+//GDAL does not like the slots macro for Qt
+// #ifdef slots
+// #undef slots
+// #endif
+#include "gdal_priv.h"
+#include "gdalwarper.h"
+#include "gdal_utils.h"
 
 enum class FlightState{no_conn, init, takeoff, coord_flight, alignment, descend, scan, operator_input, rtl, linear_scan, test};
 
@@ -256,7 +264,6 @@ public:
     bool isStopScanButtonEn() const { return this->isStopScanButtonEn_; }
     bool isSendGoalButtonEn() const { return this->isSendGoalButtonEn_; }
     bool isEndMissionButtonEn() const { return this->isEndMissionButtonEn_; }
-    
 
     //payload settings
     uint32_t emitterTelemetryCadenceMs() const { return this->em_telem_cadence_ms_; }

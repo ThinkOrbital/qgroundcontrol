@@ -10,6 +10,7 @@
 #include "QGCCorePlugin.h"
 #include "QGCOptions.h"
 #include "BackendController.h"
+#include "OrthoBackend.h"
 
 class ComplexMissionItem;
 class PlanCreator;
@@ -107,6 +108,7 @@ private:
 
     CustomOptions *_options = nullptr;
     BackendController* _backendController = nullptr;
+    OrthomosaicBackend* _orthoBackend = nullptr;
     QQmlApplicationEngine *_qmlEngine = nullptr;
     class CustomOverrideInterceptor *_selector = nullptr;
     QVariantList _customSettingsList; // Not to be mixed up with QGCCorePlugin implementation

@@ -7,6 +7,7 @@
 #include "QGCMAVLink.h"
 #include "AppSettings.h"
 // #include "BrandImageSettings.h"
+#include "SettingsManager.h"
 
 #include <QtCore/QApplicationStatic>
 #include <QtQml/QQmlApplicationEngine>
@@ -435,6 +436,26 @@ QQmlApplicationEngine* CustomPlugin::createQmlApplicationEngine(QObject* parent)
     _qmlEngine->rootContext()->setContextProperty(
         "backend",
         _backendController);
+
+    _orthoBackend = new OrthomosaicBackend(this);
+
+    connect(_orthoBackend, &OrthomosaicBackend::orthoReadyChanged, this, [this]() {
+        if (_orthoBackend->orthoReady()) {
+            QString url = _orthoBackend->orthoTileUrl();
+            if(url.isEmpty()) return;
+            qDebug() << "Setting customURL to: " << _orthoBackend->orthoTileUrl();
+            SettingsManager::instance()
+                ->appSettings()
+                ->customURL()
+                ->setRawValue(_orthoBackend->orthoTileUrl());
+        }
+        
+    });
+
+    _qmlEngine->rootContext()->setContextProperty(
+        "ortho",
+        _orthoBackend
+    );
 
     _selector = new CustomOverrideInterceptor();
     _qmlEngine->addUrlInterceptor(_selector);

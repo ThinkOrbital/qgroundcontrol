@@ -5,6 +5,8 @@
 
 message(STATUS "QGC: Adding Custom Plugin")
 
+find_package(GDAL REQUIRED)
+
 # ============================================================================
 # Custom Android Package Template
 # ============================================================================
@@ -115,6 +117,8 @@ qt_add_qml_module(CustomPlanModule
 set(CUSTOM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/BackendController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/BackendController.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/OrthoBackend.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/OrthoBackend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/CustomPlugin.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/CustomPlugin.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/CustomSettings.h
@@ -134,12 +138,14 @@ set(CUSTOM_SOURCES
 set(CUSTOM_LIBRARIES
     CustomModule
     CustomPlanModule
+    ${GDAL_LIBRARIES}
     CACHE INTERNAL "" FORCE
 )
 
 # Custom include directories
 set(CUSTOM_INCLUDE_DIRECTORIES
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${GDAL_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/MissionManager
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/AutoPilotPlugin
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/FirmwarePlugin

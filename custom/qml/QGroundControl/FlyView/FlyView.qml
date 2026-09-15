@@ -101,6 +101,8 @@ Item {
             property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
             property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
 
+            property int tileSize: 256
+
             MapCircle {
                 center: backend.centerCoordinate
                 radius: backend.sepDistance / 2
@@ -256,6 +258,7 @@ Item {
             onMapDoubleClicked: (position) => {
                 const coord = toCoordinate(position, false)
                 backend.setCenterCoordinate(coord)
+                followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
             }        
         }

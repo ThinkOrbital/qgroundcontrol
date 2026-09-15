@@ -448,7 +448,6 @@ void BackendController::processTelemetryUpdates()
 
                             this->setResumeMissionButtonEn(false);
                             this->setSendGoalButtonEn(true);
-                            this->setStartScanButtonEn(true);
                         }
                     } 
                     //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
