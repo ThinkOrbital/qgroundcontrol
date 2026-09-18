@@ -33,6 +33,7 @@ Item {
 
     property var _customSettings: QGroundControl.corePlugin.customSettings
     property var _sepDistFact:    _customSettings.separationDistance
+    property var _swapUavsFact:   _customSettings.swapUavs
 
     function _startWidthMarkers() {
         if (!_polyline || _polyline.count < 2 || !_sepDistFact) return []
@@ -40,7 +41,7 @@ Item {
         var startPt   = _polyline.path[0]
         var heading   = startPt.azimuthTo(_polyline.path[_polyline.count - 1])
         var halfWidth = _sepDistFact.value / 2
-        var swapped   = _missionItem.swapUavs
+        var swapped = _swapUavsFact.value
 
         return [
             { coordinate: startPt.atDistanceAndAzimuth(halfWidth, heading + 90), 

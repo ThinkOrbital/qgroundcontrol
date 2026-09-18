@@ -5,6 +5,7 @@
 #include <QtMath>
 #include "QmlObjectListModel.h"
 #include "VehicleLinkManager.h"
+#include "Utility.h"
 
 #include "Comms/MAVLinkProtocol.h"
 
@@ -899,10 +900,7 @@ void::BackendController::setSwapUavs(const bool swap)
 {
     if(swap_uavs_ != swap)
     {
-        qDebug() << "setting Swap UAVs to " << swap;
-        // I'm assuming atDistanceAndAzimuth already deals with angle windup
-        // Note: we do not want to call setBearing, as this will also move the start/end coordinates
-        bearing_ = bearing_ + 180;
+        bearing_ = angleWrap360(bearing_ + 180);
         emit bearingChanged();
         emit emitterGoalCoordChanged();
         emit detectorGoalCoordChanged();

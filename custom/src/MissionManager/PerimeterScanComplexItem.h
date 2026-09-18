@@ -37,7 +37,7 @@ public:
     Q_PROPERTY(Fact *fileName READ fileName CONSTANT)
     Q_PROPERTY(Fact *numImages READ numImages CONSTANT)
     Q_PROPERTY(Fact *overlap READ overlap CONSTANT)
-    Q_PROPERTY(bool swapUavs READ swapUavs WRITE setSwapUavs NOTIFY swapUavsChanged)
+    Q_PROPERTY(bool swapUavs READ swapUavs NOTIFY swapUavsChanged)
     Q_PROPERTY(QGeoCoordinate centerCoordinate READ centerCoordinate WRITE setCenterCoordinate NOTIFY centerCoordinateChanged)
 
     QGCMapPolyline *corridorPolyline(void) { return &_corridorPolyline; }
@@ -56,11 +56,11 @@ public:
     Q_INVOKABLE void adjustPolylineCoordinate(int vertexIndex,
                                              const QGeoCoordinate &coordinate)  { _corridorPolyline.adjustVertex(vertexIndex, coordinate); }
     Q_INVOKABLE void sendLinearScanGoal();
-    Q_INVOKABLE void setSwapUavs(const bool swap);
     Q_INVOKABLE void setCenterCoordinate(const QGeoCoordinate &coord);
     Q_INVOKABLE void updateCenterCoordinate();
     Q_INVOKABLE void updateStartEndCoordinate();
     Q_INVOKABLE void updatePolyline();
+    Q_INVOKABLE void updateSwapUavs();
 
     static constexpr const char *canonicalName = "Perimeter Scan";
     static constexpr const char *jsonComplexItemTypeValue = "perimeterScan";
@@ -79,7 +79,6 @@ public:
     bool swapUavs() const { return _swap_uavs; }
     QGeoCoordinate centerCoordinate() const { return _center_coordinate; }
     QGeoCoordinate lat_lon_midpoint(const QGeoCoordinate &a, const QGeoCoordinate &b);
-    double angleWrap360(double angle);
 
     // VisualMissionItem overrides
     bool                dirty                     () const final { return _dirty; }

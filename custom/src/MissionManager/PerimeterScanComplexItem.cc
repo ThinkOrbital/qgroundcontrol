@@ -10,6 +10,7 @@
 #include "CustomPlugin.h"
 #include "CustomSettings.h"
 #include "BackendController.h"
+#include "Utility.h"
 
 #include <QtCore/QJsonArray>
 
@@ -48,7 +49,7 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
         connect(_startLonFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
         connect(_endLatFact,   &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
         connect(_endLonFact,   &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
-        // connect(_swapUavsFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::setSwapUavs);
+        connect(_swapUavsFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updateSwapUavs);
     } else {
         qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
     }
@@ -144,6 +145,15 @@ void PerimeterScanComplexItem::updatePolyline()
     }
 }
 
+void PerimeterScanComplexItem::updateSwapUavs() {
+    qDebug() << "Inside updateSwapUavs. Fact value is " << _swapUavsFact->rawValue().toBool() << " class value is " << _swap_uavs;
+    if(_swap_uavs != _swapUavsFact->rawValue().toBool())
+    {
+        _swap_uavs = _swapUavsFact->rawValue().toBool();
+        emit swapUavsChanged();
+    }
+}
+
 void PerimeterScanComplexItem::updateStartEndCoordinate() {
 
     if (_flyView || _corridorPolyline.count() < 2 || !_startLatFact) {
@@ -186,21 +196,6 @@ QGeoCoordinate PerimeterScanComplexItem::lat_lon_midpoint(const QGeoCoordinate &
     double lonM = lon1 + std::atan2(by, std::cos(lat1) + bx);
 
     return QGeoCoordinate(qRadiansToDegrees(latM), qRadiansToDegrees(lonM));
-}
-
-
-double PerimeterScanComplexItem::angleWrap360(double angle)
-{
-    double new_angle = angle;
-    while(new_angle > 360.0){
-        new_angle -= 360.0;
-    }
-
-    while(new_angle < 0.0){
-        new_angle += 360.0;
-    }
-
-    return new_angle;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -327,16 +322,6 @@ void PerimeterScanComplexItem::setSequenceNumber(int sequenceNumber)
         _sequenceNumber = sequenceNumber;
         emit sequenceNumberChanged(sequenceNumber);
         emit lastSequenceNumberChanged(lastSequenceNumber());
-    }
-}
-
-void PerimeterScanComplexItem::setSwapUavs(const bool swap)
-{
-    if(_swap_uavs != swap){
-        _swap_uavs = swap;
-        
-        emit swapUavsChanged();
-        _swapUavsFact->setRawValue(swap);
     }
 }
 
