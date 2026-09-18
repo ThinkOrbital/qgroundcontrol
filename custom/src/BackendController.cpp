@@ -157,10 +157,11 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 {
                     this->flight_state_map_[message.sysid] = static_cast<FlightState>(coop_state.state);
                     this->uav_state_updated_.store(true);
-                    if(this->flight_state_map_[message.sysid] == FlightState::operator_input) 
-                    {
-                        this->send_ack(AckType::ack_coop_opin, message.sysid);
-                    }
+                }
+
+                if(this->flight_state_map_[message.sysid] == FlightState::operator_input) 
+                {
+                    this->send_ack(AckType::ack_coop_opin, message.sysid);
                 }
 
                 break;
