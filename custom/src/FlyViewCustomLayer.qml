@@ -1,6 +1,8 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import QtLocation
 import QtPositioning
 
@@ -188,7 +190,8 @@ Item {
                 }
                 FactTextField {
                     Layout.fillWidth: true
-                    text: backend.centerCoordinate.latitude.toFixed(7)
+                    text: _goalLatFact.value.toFixed(7)
+                    //text: backend.centerCoordinate.latitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
@@ -208,7 +211,8 @@ Item {
                 }
                 FactTextField {
                     Layout.fillWidth: true
-                    text: backend.centerCoordinate.longitude.toFixed(7)
+                    text: _goalLonFact.value.toFixed(7)
+                    //text: backend.centerCoordinate.longitude.toFixed(7)
                     //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
@@ -241,12 +245,30 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: false
                 }
-                FactTextField {
+
+                QGCTextField {
+                    id: bearingField
                     Layout.fillWidth: true
-                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
-                    fact: _bearingFact
+                    text: backend.bearing.toFixed(1)
+                    validator: DoubleValidator { bottom: 0; top: 360; decimals: 1; notation: DoubleValidator.StandardNotation }
+
+                    onEditingFinished: {
+                        var newBearing = parseFloat(text)
+                        if (!isNaN(newBearing)) {
+                            backend.setBearing(newBearing)   // NOT backend.bearing = newBearing via the Fact
+                        }
+                    }
+
+                    Connections {
+                        target: backend
+                        function onBearingChanged() {
+                            if (!bearingField.activeFocus) {
+                                bearingField.text = backend.bearing.toFixed(1)
+                            }
+                        }
+                    }
                 }
 
                 // -------- DETECTOR POS OFFSET --------
@@ -314,19 +336,19 @@ Item {
                 Layout.fillWidth: true
                 spacing: 2
             
-            // -------- SEPARATION --------
-            QGCLabel {
-                text: "UAV-UAV Separation (m):"
-                Layout.alignment: Qt.AlignVCenter
-                Layout.fillWidth: false
-            }
+                // -------- SEPARATION --------
+                QGCLabel {
+                    text: "UAV-UAV Separation (m):"
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.fillWidth: false
+                }
 
-            FactTextField {
-                Layout.fillWidth: true
-                fact: _sepDistFact
-                unitsLabel: "m"
-                showUnits: true
-            }
+                FactTextField {
+                    Layout.fillWidth: true
+                    fact: _sepDistFact
+                    unitsLabel: "m"
+                    showUnits: true
+                }
 
                 // -------- EMITTER ALT OFFSET --------
                 QGCLabel {
@@ -375,7 +397,6 @@ Item {
             }   
         }
     }     
-
 
     QGCGroupBox {
         id: detectorDropdown
@@ -576,6 +597,133 @@ Item {
                 QGCLabel { text: "Battery Voltage (V): " + backend.detBatV.toFixed(3) + " (" + backend.detBatPerc + "%)" }
                 QGCLabel { text: "External Power Present: " + backend.detBatExtPow}
                 QGCLabel { text: "Detector Status: " + backend.detStatus }
+            }
+        }
+    }
+
+    // -------------------------------------------------------
+    // File picker dialog
+    // -------------------------------------------------------
+    FileDialog {
+        id:          fileDialog
+        title:       "Select Orthomosaic GeoTIFF"
+        nameFilters: ["GeoTIFF files (*.tif *.tiff)", "All files (*)"]
+        currentFolder: StandardPaths.writableLocation(StandardPaths.HomeLocation)
+        onAccepted: {
+            const path = selectedFile.toString()
+            ortho.loadGeoTiff(path)
+        }
+    }
+
+    QGCGroupBox{
+        id: orthoMosaicInput
+        anchors.left: detectorStatusDropdown.right
+        anchors.top: statusBar.bottom
+        anchors.topMargin: _toolsMargin/2
+
+        background: Rectangle {
+            color:        Qt.rgba(qgcPal.window.r, qgcPal.window.g, qgcPal.window.b, 0.6)  // 0.0 = fully transparent, 1.0 = fully opaque
+            radius:       ScreenTools.defaultFontPixelWidth * 0.75
+            border.color: Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
+            border.width: 1
+        }
+
+        ColumnLayout{
+            Layout.fillWidth: true
+
+            // ================= ORTHOMOSAIC DROPDOWN ================
+            // Header row
+            RowLayout {
+                Layout.fillWidth: true
+
+                QGCLabel {
+                    id:             orthoHeader
+                    text:           (orthoExpanded ? "▼ " : "▶ ") + "Orthomosaic Input"
+                    font.pointSize: ScreenTools.smallFontPointSize
+                    font.bold:      true
+
+                    property bool orthoExpanded: false
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked:    parent.orthoExpanded = !parent.orthoExpanded
+                    }
+                }
+            }
+            
+            // Divider
+            Rectangle {
+                Layout.fillWidth: true
+                height:           1
+                color:            Qt.rgba(qgcPal.text.r, qgcPal.text.g, qgcPal.text.b, 0.3)
+            }
+
+            ColumnLayout {
+                visible: orthoHeader.orthoExpanded
+                Layout.fillWidth: true
+                spacing: 2
+
+                QGCButton {
+                    id:      loadButton
+                    text:    "Load Ortho..."
+                    enabled: !ortho.orthoProcessing
+                    //width:   110
+                    onClicked: fileDialog.open()
+                }
+
+                QGCLabel {
+                    id:                     orthoFileNameLabel
+                    text:                   ortho.orthoFileName.length > 0
+                                                ? ortho.orthoFileName
+                                                : "No file selected"
+                    color:                  ortho.orthoFileName.length > 0
+                                                ? "white"
+                                                : "#88ffffff"
+                    //anchors.verticalCenter: parent.verticalCenter
+                }
+
+                // Track
+                Rectangle {
+                    width:  parent.width
+                   // height: 8
+                   // radius: 4
+                    color:  "#44ffffff"
+
+                    // Fill
+                    Rectangle {
+                        width:  parent.width * (ortho.orthoProgress / 100.0)
+                        height: parent.height
+                        radius: parent.radius
+                        color:  "#4CAF50"
+
+                        Behavior on width {
+                            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                        }
+                    }
+                }
+
+                // Status text
+                QGCLabel {
+                    text:  Math.round(ortho.orthoProgress) + "% — " + ortho.orthoStatus
+                    color: "#ccffffff"
+                    font.pixelSize: 12
+                    width: parent.width
+                    elide: Text.ElideRight
+                }
+
+                // Cancel button
+                QGCButton {
+                    text:  "Cancel"
+                    width: parent.width
+                    onClicked: ortho.cancelOrtho()
+                }
+
+                QGCLabel {
+                    visible: ortho.orthoReady && !ortho.orthoProcessing
+                    text:    "✓ Ortho loaded — tile server ready"
+                    color:   "#4CAF50"
+                    font.pixelSize: 12
+                }
             }
         }
     }
@@ -815,14 +963,31 @@ Item {
             }   
             // ================= MISSION BUTTONS =================
   
+            QGCCheckBox {
+                id: multiScanCheckbox
+                Layout.columnSpan: 2
+                Layout.alignment: Qt.AlignHCenter
+                text:    qsTr("Multi-Scan Mission")
+                checked: backend.linearScan
+                
+                onToggled: {
+                    backend.setLinearScan(multiScanCheckbox.checked)
+                }
+            }
+
+            FactCheckBox {
+                fact: _customSettings.swapUavs
+                text: qsTr("Swap UAVs")
+            }
+
             QGCButton {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Send Goal"
-                onClicked: backend.sendCenterGoal()
-                enabled: backend.isSendGoalButtonEn 
+                onClicked: backend.linearScan ? backend.sendLinearScanGoal() : backend.sendCenterGoal()
+                enabled: backend.isSendGoalButtonEn
                 Component.onCompleted: {
                     background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)
                     background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.6) : qgcPal.buttonBorder)

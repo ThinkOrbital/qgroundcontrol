@@ -247,6 +247,49 @@ Map {
         }
     }
 
+    /***** orthomosaic *****/
+    Loader {
+        id:             _orthoOverlayLoader
+        anchors.fill:   parent
+        active:         typeof ortho !== "undefined" && ortho !== null && ortho.orthoReady
+        sourceComponent: _orthoOverlayComponent
+    }
+
+    Component {
+        id: _orthoOverlayComponent
+
+        Map {
+            id:                 _orthoOverlay
+            anchors.fill:       parent
+
+            plugin:             _map.plugin      // reuse the same provider, don't spin up a second one
+            center:             _map.center
+            zoomLevel:          _map.zoomLevel
+            bearing:            _map.bearing
+            tilt:               _map.tilt
+            fieldOfView:        _map.fieldOfView
+
+            color:              "transparent"    // no fill behind no-coverage tiles - let _map show through
+            copyrightsVisible:  false             // avoid a duplicate attribution banner on top of _map's
+            enabled:            false             // never intercept input - all gestures stay handled by _map
+
+            // https://bugreports.qt.io/browse/QTBUG-82185 - never let opacity land exactly on 1.0
+            opacity: typeof ortho !== "undefined" && ortho !== null ? Math.min(ortho.orthoOpacity, 0.99) : 0.99
+
+            onMapReadyChanged: if (mapReady) _setOrthoMapType()
+
+            function _setOrthoMapType() {
+                for (var i = 0; i < supportedMapTypes.length; i++) {
+                    if (supportedMapTypes[i].name === "CustomURL Custom") {
+                        activeMapType = supportedMapTypes[i]
+                        return
+                    }
+                }
+                console.warn("FlightMap: ortho overlay - 'CustomURL Custom' map type not found")
+            }
+        }
+    }
+
     /// Ground Station location
     MapQuickItem {
         anchorPoint.x:  sourceItem.width / 2

@@ -92,6 +92,46 @@
     "label": "Goal Longitude"
 },
 {
+    "name": "startLat",
+    "shortDesc": "Latitude linear scan start",
+    "type": "double",
+    "minValue": "-90",
+    "maxValue": "90",
+    "decimalPlaces": 7,
+    "default": 0,
+    "label": "Start Latitude"
+},
+{
+    "name": "startLon",
+    "shortDesc": "Longitude linear scan start",
+    "type": "double",
+    "minValue": "-180",
+    "maxValue": "180",
+    "decimalPlaces": 7,
+    "default": 0,
+    "label": "Start Longitude"
+},
+{
+    "name": "endLat",
+    "shortDesc": "Latitude linear scan end",
+    "type": "double",
+    "minValue": "-90",
+    "maxValue": "90",
+    "decimalPlaces": 7,
+    "default": 0,
+    "label": "End Latitude"
+},
+{
+    "name": "endLon",
+    "shortDesc": "Longitude linear scan end",
+    "type": "double",
+    "minValue": "-180",
+    "maxValue": "180",
+    "decimalPlaces": 7,
+    "default": 0,
+    "label": "End Longitude"
+},
+{
     "name": "numImages",
     "shortDesc": "Number of images per scan sequence",
     "type": "Int32",
@@ -125,6 +165,13 @@
     "min": 0,
     "max": 99,
     "label": "Percent Overlap"
+},
+{
+    "name": "swapUavs",
+    "shortDesc": "swap position of drones for linear scan",
+    "type": "Bool",
+    "default": false,
+    "label": "Swap UAVs"
 }
 ]
 }

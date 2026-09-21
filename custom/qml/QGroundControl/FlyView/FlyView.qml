@@ -58,6 +58,22 @@ Item {
         toolbar.dropMainStatusIndicatorTool();
     }
 
+    function _perimeterBoxPath() {
+        if (!backend.startCoordinate || !backend.endCoordinate) return []
+
+        var startPt   = backend.startCoordinate
+        var endPt    = backend.endCoordinate
+        var heading   = startPt.azimuthTo(endPt)
+        var halfWidth = backend.sepDistance / 2
+
+        return [
+            startPt.atDistanceAndAzimuth(halfWidth, heading + 90),
+            endPt.atDistanceAndAzimuth(halfWidth,  heading + 90),
+            endPt.atDistanceAndAzimuth(halfWidth,  heading - 90),
+            startPt.atDistanceAndAzimuth(halfWidth, heading - 90)
+        ]
+    }
+
     QGCToolInsets {
         id:                     _toolInsets
         topEdgeLeftInset:       toolbar.height
@@ -85,12 +101,23 @@ Item {
             property var _vehicleDetector: QGroundControl.multiVehicleManager.getVehicleById(1)
             property var _vehicleEmitter: QGroundControl.multiVehicleManager.getVehicleById(2)
 
+            property int tileSize: 256
+
             MapCircle {
                 center: backend.centerCoordinate
                 radius: backend.sepDistance / 2
                 color: "#4000FF00"
                 border.width: 2
                 border.color: "#00FF00"
+                visible: !backend.linearScan
+            }
+
+            MapPolygon {
+                path:    backend.linearScan ? _perimeterBoxPath() : []
+                color:   "#4000FF00"
+                border.width: 2
+                border.color: "#00FF00"
+                visible: backend.planUploaded && backend.linearScan
             }
                 
             MapCircle {
@@ -177,11 +204,61 @@ Item {
                     }
                 }
             }
+
+
+            // --- Linear Scan Start ---
+            MapQuickItem {
+                id: linearScanStartDot
+                objectName: "linearScanStartDot"
+                coordinate: backend.startCoordinate
+                visible: backend.linearScan
+                anchorPoint.x: 10
+                anchorPoint.y: 10
+                sourceItem: Rectangle {
+                    width: 20
+                    height: 20
+                    color: "white"
+                    radius: width / 2
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "ST"
+                        color: "black"
+                        font.bold: true
+                        font.pixelSize: 16
+                    }
+                }
+            }
         
+            // --- Linear Scan End ---
+            MapQuickItem {
+                id: linearScanEndDot
+                objectName: "linearScanEndDot"
+                coordinate: backend.endCoordinate
+                visible: backend.linearScan
+                anchorPoint.x: 10
+                anchorPoint.y: 10
+                sourceItem: Rectangle {
+                    width: 20
+                    height: 20
+                    color: "white"
+                    radius: width / 2
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "END"
+                        color: "black"
+                        font.bold: true
+                        font.pixelSize: 16
+                    }
+                }
+            }
+
             //Double click for circle
             onMapDoubleClicked: (position) => {
                 const coord = toCoordinate(position, false)
                 backend.setCenterCoordinate(coord)
+                followGps = false
                 console.log("Double-click moved circle to", coord.latitude, coord.longitude)
             }        
         }

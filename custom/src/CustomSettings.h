@@ -23,9 +23,14 @@ public:
     DEFINE_SETTINGFACT(flightVel)
     DEFINE_SETTINGFACT(goalLat)
     DEFINE_SETTINGFACT(goalLon)
+    DEFINE_SETTINGFACT(startLat)
+    DEFINE_SETTINGFACT(startLon)
+    DEFINE_SETTINGFACT(endLat)
+    DEFINE_SETTINGFACT(endLon)
     DEFINE_SETTINGFACT(numImages)
     DEFINE_SETTINGFACT(fileName)
     DEFINE_SETTINGFACT(detectorXrayWindow)
     DEFINE_SETTINGFACT(overlap)
+    DEFINE_SETTINGFACT(swapUavs)
 
 };
