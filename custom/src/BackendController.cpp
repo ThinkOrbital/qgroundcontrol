@@ -153,7 +153,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 // store/emit based on sysid
                 FlightState state = static_cast<FlightState>(coop_state.state);
 
-            
                 if(this->flight_state_map_[message.sysid] != state)
                 {
                     this->flight_state_map_[message.sysid] = static_cast<FlightState>(coop_state.state);
@@ -444,7 +443,6 @@ void BackendController::processTelemetryUpdates()
                 }
 
             }
-
             setFlightStatus(flightStatus);
         }
     }
