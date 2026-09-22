@@ -469,6 +469,11 @@ private:
 
     bool singleUAV_ = {false};
 
+    // Simulate packet loss
+    uint8_t _sim_packet_loss_perc {0};
+    std::mt19937 _mt_rand{std::random_device{}()};
+    std::uniform_int_distribution<> _uni_dist_rand {0,100};
+
     //payload
     StartScan scan_state_ {StartScan::scan_off};
 
