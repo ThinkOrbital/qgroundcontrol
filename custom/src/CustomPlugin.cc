@@ -76,19 +76,16 @@ void CustomPlugin::_wireCustomSettingsToBackend()
     Fact *fileNameFact = _customSettings->fileName();
     Fact *xrayWindowFact = _customSettings->detectorXrayWindow();
     Fact *overlapFact = _customSettings->overlap();
-    Fact *swapUavsFact = _customSettings->swapUavs();
 
     _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
     connect(sepDistFact, &Fact::valueChanged, _backendController, [this, sepDistFact]() {
         _backendController->setSepDistance(sepDistFact->rawValue().toDouble());
     });
 
-    _backendController->updateBearing(bearingFact->rawValue().toDouble());
+    _backendController->setBearing(bearingFact->rawValue().toDouble());
     connect(bearingFact, &Fact::valueChanged, _backendController, [this, bearingFact]() {
-        _backendController->updateBearing(bearingFact->rawValue().toDouble());
+        _backendController->setBearing(bearingFact->rawValue().toDouble());
     });
-
-
 
     _backendController->setTargetAlt(targetAltFact->rawValue().toDouble());
     connect(targetAltFact, &Fact::valueChanged, _backendController, [this, targetAltFact]() {
@@ -133,11 +130,6 @@ void CustomPlugin::_wireCustomSettingsToBackend()
     _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
     connect(overlapFact, &Fact::valueChanged, _backendController, [this, overlapFact]() {
         _backendController->setOverlap(static_cast<uint8_t>(overlapFact->rawValue().toUInt()));
-    });
-
-    _backendController->setSwapUavs(static_cast<bool>(swapUavsFact->rawValue().toBool()));
-    connect(swapUavsFact, &Fact::valueChanged, _backendController, [this, swapUavsFact]() {
-        _backendController->setSwapUavs(static_cast<bool>(swapUavsFact->rawValue().toBool()));
     });
 
     // goalLat/goalLon combine into one QGeoCoordinate-typed property
@@ -190,8 +182,9 @@ void CustomPlugin::_wireCustomSettingsToBackend()
         endLonFact->setRawValue(coord.longitude());
     });
 
-    connect(_backendController, &BackendController::swapUavsChanged, this, [this, swapUavsFact]() {
-        swapUavsFact->setRawValue(_backendController->swapUavs());
+    connect(_backendController, &BackendController::bearingChanged, this, [this, bearingFact]() {
+        const double bearing = _backendController->bearing();
+        bearingFact->setRawValue(bearing);
     });
 
 }

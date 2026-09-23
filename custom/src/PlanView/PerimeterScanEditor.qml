@@ -177,12 +177,17 @@ Rectangle {
                 showUnits: true
             }
 
-            FactCheckBox {
-                fact: _customSettings.swapUavs
-                text: qsTr("Swap UAVs")
+            QGCButton {
+                Layout.columnSpan: 2
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
+                text: "Swap UAVs"
+                onClicked: missionItem.swapUavs()
             }
 
             QGCButton {
+                Layout.columnSpan: 2
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9

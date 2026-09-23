@@ -33,7 +33,6 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
         _numImagesFact = customSettings->numImages();
         _overlapFact = customSettings->overlap();
         _bearingFact = customSettings->bearing();
-        _swapUavsFact = customSettings->swapUavs();
         _goalLatFact = customSettings->goalLat();
         _goalLonFact = customSettings->goalLon();
         _startLatFact = customSettings->startLat();
@@ -49,7 +48,7 @@ PerimeterScanComplexItem::PerimeterScanComplexItem(PlanMasterController *masterC
         connect(_startLonFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
         connect(_endLatFact,   &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
         connect(_endLonFact,   &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
-        connect(_swapUavsFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updateSwapUavs);
+        connect(_bearingFact, &Fact::rawValueChanged, this, &PerimeterScanComplexItem::updatePolyline);
     } else {
         qCWarning(PerimeterScanLog) << "CustomPlugin/CustomSettings not available, PerimeterScan Facts will be null";
     }
@@ -92,18 +91,6 @@ void PerimeterScanComplexItem::sendLinearScanGoal() {
 
     _endLatFact->setRawValue(endCoord.latitude());
     _endLonFact->setRawValue(endCoord.longitude());
-    
-    // get angle for drone positions
-    double start_stop_angle_deg = startCoord.azimuthTo(endCoord); 
-
-    double angle = angleWrap360(start_stop_angle_deg + 90.0);
-
-    if(swapUavs())
-    {
-        angle = angleWrap360(angle + 180);
-    }
-
-    _bearingFact->setRawValue(angle);
 
     backendController->sendLinearScanGoal();
 }
@@ -145,13 +132,10 @@ void PerimeterScanComplexItem::updatePolyline()
     }
 }
 
-void PerimeterScanComplexItem::updateSwapUavs() {
-    qDebug() << "Inside updateSwapUavs. Fact value is " << _swapUavsFact->rawValue().toBool() << " class value is " << _swap_uavs;
-    if(_swap_uavs != _swapUavsFact->rawValue().toBool())
-    {
-        _swap_uavs = _swapUavsFact->rawValue().toBool();
-        emit swapUavsChanged();
-    }
+void PerimeterScanComplexItem::swapUavs()
+{
+    double new_angle = angleWrap360(_bearingFact->rawValue().toDouble() + 180.0);
+    _bearingFact->setRawValue(new_angle);
 }
 
 void PerimeterScanComplexItem::updateStartEndCoordinate() {
@@ -173,7 +157,7 @@ void PerimeterScanComplexItem::updateStartEndCoordinate() {
 
     double angle = angleWrap360(start_stop_angle_deg + 90.0);
 
-    if(swapUavs())
+    if(_bearingFact->rawValue().toDouble() > 180 && angle < 180)
     {
         angle = angleWrap360(angle + 180);
     }

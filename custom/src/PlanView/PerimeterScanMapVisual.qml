@@ -33,21 +33,19 @@ Item {
 
     property var _customSettings: QGroundControl.corePlugin.customSettings
     property var _sepDistFact:    _customSettings.separationDistance
-    property var _swapUavsFact:   _customSettings.swapUavs
+    property var _bearingFact: _customSettings.bearing
 
     function _startWidthMarkers() {
         if (!_polyline || _polyline.count < 2 || !_sepDistFact) return []
 
         var startPt   = _polyline.path[0]
-        var heading   = startPt.azimuthTo(_polyline.path[_polyline.count - 1])
         var halfWidth = _sepDistFact.value / 2
-        var swapped = _swapUavsFact.value
 
         return [
-            { coordinate: startPt.atDistanceAndAzimuth(halfWidth, heading + 90), 
-                label: swapped ? qsTr("E") : qsTr("D") },
-            { coordinate: startPt.atDistanceAndAzimuth(halfWidth, heading - 90), 
-                label: swapped ? qsTr("D") : qsTr("E") }
+            { coordinate: startPt.atDistanceAndAzimuth(halfWidth, _bearingFact.value), 
+                label: qsTr("D")},
+            { coordinate: startPt.atDistanceAndAzimuth(halfWidth, _bearingFact.value + 180), 
+                label: qsTr("E")}
         ]
     }
 

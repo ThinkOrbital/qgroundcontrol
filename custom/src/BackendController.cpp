@@ -869,7 +869,7 @@ void BackendController::setBearing(const double bearing)
             QGeoCoordinate newStart;
             QGeoCoordinate newEnd;
 
-            if(swap_uavs_){
+            if(bearing_ > 180){
                 newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
                 newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
             } else {
@@ -886,27 +886,10 @@ void BackendController::setBearing(const double bearing)
     }
 }
 
-void::BackendController::updateBearing(const double bearing)
+void BackendController::swapUavs()
 {
-    if (bearing_ != bearing) {
-        bearing_ = bearing;
-        emit bearingChanged();
-        emit emitterGoalCoordChanged();
-        emit detectorGoalCoordChanged();
-    }
-}
-
-void::BackendController::setSwapUavs(const bool swap)
-{
-    if(swap_uavs_ != swap)
-    {
-        bearing_ = angleWrap360(bearing_ + 180);
-        emit bearingChanged();
-        emit emitterGoalCoordChanged();
-        emit detectorGoalCoordChanged();
-        
-        swap_uavs_ = swap;
-    }
+    double new_angle = angleWrap360(bearing_ + 180);
+    this->setBearing(new_angle);
 }
 
 void BackendController::setTargetAlt(const double altitude)
