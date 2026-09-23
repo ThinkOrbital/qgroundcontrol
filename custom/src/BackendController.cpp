@@ -450,6 +450,14 @@ void BackendController::processTelemetryUpdates()
     //uav state changed
     if(this->uav_state_updated_.load())
     {
+        if (!this->ready_to_fly_.contains(SYSID_EMITTER)) {
+            this->ready_to_fly_[SYSID_EMITTER] = false;
+        }
+        
+        if (!this->ready_to_fly_.contains(SYSID_DETECTOR)) {
+            this->ready_to_fly_[SYSID_DETECTOR] = false;
+        }
+        
         for(const auto& [sysid, state] : this->flight_state_map_)
         {
            
@@ -459,14 +467,15 @@ void BackendController::processTelemetryUpdates()
             bool same_state = false;
             bool ready_to_fly = false;
 
-            MultiVehicleManager* vehicleManager = MultiVehicleManager::instance();
-            Vehicle* vehicle = vehicleManager->getVehicleById(sysid);
-
-            this->ready_to_fly_[sysid] = false;
-
-            if(vehicle->readyToFly())
+            if(this->subscribed_map_[sysid])
             {
-                this->ready_to_fly_[sysid] = true;
+                MultiVehicleManager* vehicleManager = MultiVehicleManager::instance();
+                Vehicle* vehicle = vehicleManager->getVehicleById(sysid);
+
+                if((vehicle != nullptr) && vehicle->readyToFly())
+                {
+                    this->ready_to_fly_[sysid] = true;
+                }
             }
 
             all_subscribed = this->singleUAV_ ? 
