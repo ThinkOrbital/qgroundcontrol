@@ -432,29 +432,23 @@ Item {
                 spacing: 2
 
                 QGCLabel { text: "X-ray window" }
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
                     unitsLabel: "ms"
                     showUnits: true
-                    text: backend.detectorXrayWindow
-                    onEditingFinished:
-                        backend.detectorXrayWindow = text
+                    fact: _detectorXrayWindowFact
                 }
 
                 QGCLabel {text: "Number of Images"}
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
-                    text: backend.numImages
-                    onEditingFinished:
-                        backend.numImages = text;
+                    fact: _numImagesFact
                 }
 
                 QGCLabel { text: "File Name"}
-                QGCTextField {
+                FactTextField {
                     Layout.fillWidth: true
-                    text: backend.fileName
-                    onEditingFinished:
-                        backend.fileName = text;
+                    fact: _fileNameFact
                 }
             }
         }
