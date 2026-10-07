@@ -115,6 +115,8 @@ qt_add_qml_module(CustomPlanModule
 # ============================================================================
 
 set(CUSTOM_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Utility.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Utility.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/BackendController.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/BackendController.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/OrthoBackend.cpp

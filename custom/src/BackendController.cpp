@@ -5,6 +5,7 @@
 #include <QtMath>
 #include "QmlObjectListModel.h"
 #include "VehicleLinkManager.h"
+#include "Utility.h"
 
 #include "Comms/MAVLinkProtocol.h"
 
@@ -157,10 +158,11 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 {
                     this->flight_state_map_[message.sysid] = static_cast<FlightState>(coop_state.state);
                     this->uav_state_updated_.store(true);
-                    if(this->flight_state_map_[message.sysid] == FlightState::operator_input) 
-                    {
-                        this->send_ack(AckType::ack_coop_opin, message.sysid);
-                    }
+                }
+
+                if(this->flight_state_map_[message.sysid] == FlightState::operator_input) 
+                {
+                    this->send_ack(AckType::ack_coop_opin, message.sysid);
                 }
 
                 break;
@@ -934,7 +936,7 @@ void BackendController::setBearing(const double bearing)
             QGeoCoordinate newStart;
             QGeoCoordinate newEnd;
 
-            if(swap_uavs_){
+            if(bearing_ > 180){
                 newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
                 newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
             } else {
@@ -951,30 +953,10 @@ void BackendController::setBearing(const double bearing)
     }
 }
 
-void::BackendController::updateBearing(const double bearing)
+void BackendController::swapUavs()
 {
-    if (bearing_ != bearing) {
-        bearing_ = bearing;
-        emit bearingChanged();
-        emit emitterGoalCoordChanged();
-        emit detectorGoalCoordChanged();
-    }
-}
-
-void::BackendController::setSwapUavs(const bool swap)
-{
-    if(swap_uavs_ != swap)
-    {
-        qDebug() << "setting Swap UAVs to " << swap;
-        // I'm assuming atDistanceAndAzimuth already deals with angle windup
-        // Note: we do not want to call setBearing, as this will also move the start/end coordinates
-        bearing_ = bearing_ + 180;
-        emit bearingChanged();
-        emit emitterGoalCoordChanged();
-        emit detectorGoalCoordChanged();
-        
-        swap_uavs_ = swap;
-    }
+    double new_angle = angleWrap360(bearing_ + 180);
+    this->setBearing(new_angle);
 }
 
 void BackendController::setTargetAlt(const double altitude)
@@ -1151,7 +1133,13 @@ void BackendController::sendStartMission(StartMission state)
             &msg
         );
         qDebug() << "Sending start mission message to system id " << vehicle->id() << " with state " << +static_cast<uint8_t>(state);
-        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        
+        if(this->_uni_dist_rand(this->_mt_rand) >= this->_sim_packet_loss_perc){
+            (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        } else {
+            qDebug() << "Start Mission message dropped!";
+        }
+
         this->sent_start_msg_ = true;
         this->start_msg_time_ = std::chrono::steady_clock::now();
         break; //send only one message out as it's going to both mavlink-routers on port 50882
@@ -1162,7 +1150,6 @@ void BackendController::sendStartMission(StartMission state)
 
 void BackendController::sendStartScan(StartScan state)
 {
-   
     mavlink_start_scan_t msg = {};
     msg.start_scan = static_cast<uint8_t>(state);
     msg.em_test_duration_ms = this->emitterTestDurationMs();
@@ -1198,7 +1185,12 @@ void BackendController::sendStartScan(StartScan state)
 
         qDebug() << "Sending start scan message to system id " << vehicle->id() << " with state " << +static_cast<uint8_t>(state);
 
-        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        if(this->_uni_dist_rand(this->_mt_rand) >= this->_sim_packet_loss_perc){
+            (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        } else {
+            qDebug() << "Start Scan message dropped!";
+        }
+
         this->sent_scan_msg_ = true;
         this->scan_msg_time_ = std::chrono::steady_clock::now();
         break; //send only one message out as it's going to both mavlink-routers on port 50882
@@ -1236,7 +1228,12 @@ void BackendController::send_ack(AckType type, uint8_t src_id)
 
         qDebug() << "Sending Acknowledge message to system id " << vehicle->id(); 
 
-        (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        if(this->_uni_dist_rand(this->_mt_rand) >= this->_sim_packet_loss_perc){
+            (void) vehicle->sendMessageOnLinkThreadSafe(sharedLink.get(), mavMsg);
+        } else {
+            qDebug() << "Ack message dropped!";
+        }
+
         break; //send only one message out as it's going to both mavlink-routers on port 50882
     }
 }

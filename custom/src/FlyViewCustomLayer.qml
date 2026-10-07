@@ -246,29 +246,12 @@ Item {
                     Layout.fillWidth: false
                 }
 
-                QGCTextField {
-                    id: bearingField
+                FactTextField {
                     Layout.fillWidth: true
+                    //font.pointSize: ScreenTools.smallFontPointSize  // smaller font
                     unitsLabel: "deg"
                     showUnits: true
-                    text: backend.bearing.toFixed(1)
-                    validator: DoubleValidator { bottom: 0; top: 360; decimals: 1; notation: DoubleValidator.StandardNotation }
-
-                    onEditingFinished: {
-                        var newBearing = parseFloat(text)
-                        if (!isNaN(newBearing)) {
-                            backend.setBearing(newBearing)   // NOT backend.bearing = newBearing via the Fact
-                        }
-                    }
-
-                    Connections {
-                        target: backend
-                        function onBearingChanged() {
-                            if (!bearingField.activeFocus) {
-                                bearingField.text = backend.bearing.toFixed(1)
-                            }
-                        }
-                    }
+                    fact: _bearingFact
                 }
 
                 // -------- DETECTOR POS OFFSET --------
@@ -975,10 +958,20 @@ Item {
                 }
             }
 
-            FactCheckBox {
-                fact: _customSettings.swapUavs
-                text: qsTr("Swap UAVs")
+            QGCButton {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                //implicitWidth: ScreenTools.defaultFontPixelWidth * 12
+                font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
+                text: "Swap UAVs"
+                onClicked: backend.swapUavs()
+                /*enabled: backend.isSendGoalButtonEn && _vehicleEmitter && _vehicleDetector
+                Component.onCompleted: {
+                    background.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.3) : qgcPal.button)
+                    background.border.color = Qt.binding(() => enabled ? Qt.darker(qgcPal.colorYellow, 1.6) : qgcPal.buttonBorder)
+                }*/
             }
+
 
             QGCButton {
                 Layout.fillWidth: true

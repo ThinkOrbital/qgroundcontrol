@@ -156,7 +156,6 @@ class BackendController : public QObject {
     Q_PROPERTY(QString flightStatus READ flightStatus WRITE setFlightStatus NOTIFY flightStatusChanged)
 
     Q_PROPERTY(uint8_t nudgeMode READ nudgeMode WRITE setNudgeMode NOTIFY nudgeModeChanged)
-    Q_PROPERTY(bool swapUavs READ swapUavs WRITE setSwapUavs NOTIFY swapUavsChanged);
 
 public:
     explicit BackendController(QObject *parent = nullptr);
@@ -167,7 +166,6 @@ public:
     uint8_t overlap() const { return overlap_; }
     double sepDistance() const { return sep_distance_; }
     double bearing() const { return bearing_; }
-    bool swapUavs() const { return swap_uavs_; }
     bool linearScan() const {return linear_scan_;}
     double targetAlt() const { return target_alt_; }
     double detOffset() const { return detOffset_; }
@@ -334,10 +332,9 @@ public:
     Q_INVOKABLE void killScan();
     Q_INVOKABLE void emTubeSeasoning();
     Q_INVOKABLE void payloadCal();
-    Q_INVOKABLE void setSwapUavs(const bool swap);
     Q_INVOKABLE void setLinearScan(const bool linear_scan);
     Q_INVOKABLE void updateCenterCoordinate(const QGeoCoordinate &coord);
-    Q_INVOKABLE void updateBearing(const double bearing);
+    Q_INVOKABLE void swapUavs();
 
     //payload settings
     Q_INVOKABLE void setCadence(const uint32_t telemCadence);
@@ -427,7 +424,6 @@ signals:
 
     void flightStatusChanged();
     void nudgeModeChanged(uint8_t nudgeMode);
-    void swapUavsChanged();
 
 private slots:
     void _mavlinkMessageReceived(LinkInterface* link, mavlink_message_t message);
@@ -473,6 +469,11 @@ private:
     bool mapCentered_ = {false};
 
     bool singleUAV_ = {false};
+
+    // Simulate packet loss
+    uint8_t _sim_packet_loss_perc {0};
+    std::mt19937 _mt_rand{std::random_device{}()};
+    std::uniform_int_distribution<> _uni_dist_rand {0,100};
 
     //payload
     StartScan scan_state_ {StartScan::scan_off};
