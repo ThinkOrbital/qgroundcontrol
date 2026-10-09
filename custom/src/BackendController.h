@@ -129,6 +129,8 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isStopScanButtonEn READ isStopScanButtonEn WRITE setStopScanButtonEn NOTIFY stopScanButtonChanged);
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
+    Q_PROPERTY(bool isCalibrateButtonEn READ isCalibrateButtonEn WRITE setCalibrateButtonEn NOTIFY calibrateButtonChanged);
+    Q_PROPERTY(bool isTubeSeasButtonEn READ isTubeSeasButtonEn WRITE setTubeSeasButtonEn NOTIFY tubeSeasButtonChanged);
 
     Q_PROPERTY(uint16_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
@@ -262,6 +264,8 @@ public:
     bool isStopScanButtonEn() const { return this->isStopScanButtonEn_; }
     bool isSendGoalButtonEn() const { return this->isSendGoalButtonEn_; }
     bool isEndMissionButtonEn() const { return this->isEndMissionButtonEn_; }
+    bool isCalibrateButtonEn() const {return this->isCalibrateButtonEn_; }
+    bool isTubeSeasButtonEn() const {return this->isTubeSeasButtonEn_; }
 
     //payload settings
     uint32_t emitterTelemetryCadenceMs() const { return this->em_telem_cadence_ms_; }
@@ -304,6 +308,8 @@ public:
     Q_INVOKABLE void setStopScanButtonEn(const bool enabled);
     Q_INVOKABLE void setSendGoalButtonEn(const bool enabled);
     Q_INVOKABLE void setEndMissionButtonEn(const bool enabled);
+    Q_INVOKABLE void setCalibrateButtonEn(const bool enabled);
+    Q_INVOKABLE void setTubeSeasButtonEn(const bool enabled);
 
     //detect GUI changes and button presses
     Q_INVOKABLE void nudge(const double azimuth, const double distance);
@@ -388,6 +394,8 @@ signals:
     void stopScanButtonChanged();
     void sendGoalButtonChanged();
     void endMissionButtonChanged();
+    void calibrateButtonChanged();
+    void tubeSeasButtonChanged();
 
     //payload settings
     void cadenceChanged();
@@ -455,6 +463,8 @@ private:
     bool isStopScanButtonEn_ = {false};
     bool isSendGoalButtonEn_ = {false};
     bool isEndMissionButtonEn_ = {false};
+    bool isCalibrateButtonEn_ = {false};
+    bool isTubeSeasButtonEn_ = {false};
     
     bool targMsgSent_ = {false};
     bool calMsgSent_ = {false};
