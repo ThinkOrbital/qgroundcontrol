@@ -758,7 +758,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Calibrate Payloads"
                 onClicked: backend.payloadCal()
-                enabled: _vehicleDetector && _vehicleEmitter && !_vehicleDetector.flying && !_vehicleEmitter.flying
+                enabled: backend.isCalibrateButtonEn && !_vehicleDetector.flying && !_vehicleEmitter.flying
             }
 
             QGCButton {
@@ -767,7 +767,7 @@ Item {
                 font.pixelSize: ScreenTools.defaultFontPixelHeight * 0.9
                 text: "Tube Seasoning"
                 onClicked: backend.emTubeSeasoning()
-                enabled: _vehicleEmitter && !_vehicleEmitter.flying
+                enabled: backend.isTubeSeasButtonEn && _vehicleEmitter && !_vehicleEmitter.flying
             }
 
             QGCButton {

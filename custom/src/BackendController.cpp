@@ -121,7 +121,14 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
             case MAVLINK_MSG_ID_HEARTBEAT: {
                 if(message.compid == SYSID_EMITTER_COMP || message.compid == SYSID_DETECTOR_COMP)
                 {
-                    this->subscribed_map_[message.sysid] = true;
+                    if(this->subscribed_map_[message.sysid] == false) {
+                        qDebug() << "Re-established connnection";
+                        this->subscribed_map_[message.sysid] = true;
+                        if(this->subscribed_map_[SYSID_DETECTOR] && this->subscribed_map_[SYSID_EMITTER]){
+                            this->setCalibrateButtonEn(true);
+                            this->setTubeSeasButtonEn(true);
+                        }
+                    }
                     this->heartbeat_last_seen_ms_[message.sysid] = QDateTime::currentMSecsSinceEpoch();
                 } 
                 break;
@@ -230,7 +237,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_msg_msg_ack_decode(&message, &msg_ack);
                 
                 AckType type = static_cast<AckType> (msg_ack.ack_type);
-                // uint8_t src_id = msg_ack.src_id;
 
                 if(this->msg_ack_map_[message.sysid] != type)
                 {
@@ -248,7 +254,7 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                             }
                         }
                         
-                        if((this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan) && (this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan))
+                        if((this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan_cal) && (this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan_cal))
                         {
                             if(this->calMsgSent_ != true)
                             {
@@ -300,15 +306,15 @@ void BackendController::processTelemetryUpdates()
 
     if(this->sent_scan_msg_)
     {
-        if((this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan) 
-            && (this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan))
+        if((isValidScanAck(this->msg_ack_map_[SYSID_DETECTOR])) 
+            && (isValidScanAck(this->msg_ack_map_[SYSID_EMITTER])))
         {
             qDebug() << "Both UAV's received scan message";
             this->sent_scan_msg_ = false;
             this->uav_state_updated_.store(true);
         }
-        else if((this->msg_ack_map_[SYSID_DETECTOR] != AckType::ack_scan) 
-            || (this->msg_ack_map_[SYSID_EMITTER] != AckType::ack_scan)) 
+        else if((!isValidScanAck(this->msg_ack_map_[SYSID_DETECTOR])) 
+            || (!isValidScanAck(this->msg_ack_map_[SYSID_EMITTER]))) 
         {
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time = current_time - this->scan_msg_time_;
@@ -352,8 +358,8 @@ void BackendController::processTelemetryUpdates()
 
     if(this->sent_start_msg_)
     {
-        if((is_one_of(this->msg_ack_map_[SYSID_DETECTOR], AckType::ack_start_start, AckType::ack_start_resume, AckType::ack_start_end)) 
-            && (is_one_of(this->msg_ack_map_[SYSID_EMITTER], AckType::ack_start_start, AckType::ack_start_resume, AckType::ack_start_end)))
+        if((isValidStartAck(this->msg_ack_map_[SYSID_DETECTOR])) 
+            && (isValidStartAck(this->msg_ack_map_[SYSID_EMITTER])))
         {
             qDebug() << "Both UAV's received start message";
             this->sent_start_msg_ = false;
@@ -362,7 +368,7 @@ void BackendController::processTelemetryUpdates()
         else
         {
             auto current_time = std::chrono::steady_clock::now();
-            auto elapsed_time = current_time - this->targ_msg_time_; 
+            auto elapsed_time = current_time - this->start_msg_time_; 
             if(elapsed_time >= std::chrono::seconds(1))
             {   
                 //resend start message
@@ -394,6 +400,10 @@ void BackendController::processTelemetryUpdates()
             {
                 this->targMsgSent_ = false;
                 this->calMsgSent_ = false;
+                this->setStartMissionButtonEn(false);
+                this->setSendGoalButtonEn(false);
+                this->setCalibrateButtonEn(false);
+                this->setTubeSeasButtonEn(false);
                 flightStatus += "Emitter Companion Disconnected. ";
             }
 
@@ -401,6 +411,10 @@ void BackendController::processTelemetryUpdates()
             {
                 this->targMsgSent_ = false;
                 this->calMsgSent_ = false;
+                this->setStartMissionButtonEn(false);
+                this->setSendGoalButtonEn(false);
+                this->setCalibrateButtonEn(false);
+                this->setTubeSeasButtonEn(false);
                 flightStatus += "Detector Companion Disconnected.";
             }
             setFlightStatus(flightStatus);
@@ -440,6 +454,7 @@ void BackendController::processTelemetryUpdates()
 
                             if(!calMsgSent_)
                             {
+                                this->setStartMissionButtonEn(false);
                                 str_flight_status += "Waiting for user to calibrate detector. ";
                             }
 
@@ -450,6 +465,8 @@ void BackendController::processTelemetryUpdates()
 
                             this->setResumeMissionButtonEn(false);
                             this->setSendGoalButtonEn(true);
+                            this->setCalibrateButtonEn(true);
+                            this->setTubeSeasButtonEn(true);
                         }
                     } 
                     //ToDo: I left the code below for allowing single UAV flight. However, I will need to make additional changes to get 
@@ -992,6 +1009,20 @@ void BackendController::setEndMissionButtonEn(const bool enabled)
     }
 }
 
+void BackendController::setCalibrateButtonEn(const bool enabled) {
+    if(this->isCalibrateButtonEn_ != enabled) {
+        this->isCalibrateButtonEn_ = enabled;
+        emit calibrateButtonChanged();
+    }
+}
+
+void BackendController::setTubeSeasButtonEn(const bool enabled){
+    if(this->isTubeSeasButtonEn_ != enabled) {
+        this->isTubeSeasButtonEn_ = enabled;
+        emit tubeSeasButtonChanged();
+    }
+}
+
 void BackendController::sendCenterGoal()
 {
     qDebug() << "Sending center goal";
@@ -1163,6 +1194,16 @@ void BackendController::send_ack(AckType type, uint8_t src_id)
     }
 }
 
+bool BackendController::isValidScanAck(AckType ack_type){
+    return static_cast<uint8_t>(ack_type) >= static_cast<uint8_t>(AckType::scan_start) &&
+            static_cast<uint8_t>(ack_type) <= static_cast<uint8_t>(AckType::scan_end);
+}
+
+bool BackendController::isValidStartAck(AckType ack_type){
+    return static_cast<uint8_t>(ack_type) >= static_cast<uint8_t>(AckType::start_mission_start) &&
+            static_cast<uint8_t>(ack_type) <= static_cast<uint8_t>(AckType::start_mission_end);
+}
+
 void BackendController::startMission()
 {
     qDebug() << "Start Mission Button Pressed";
@@ -1270,6 +1311,8 @@ void BackendController::setXrayWindow(const uint16_t xrayWindow)
     if(this->det_xray_window_ms_ != xrayWindow)
     {
         this->det_xray_window_ms_ = xrayWindow;
+        calMsgSent_ = false;
+        this->uav_state_updated_.store(true);
         emit xrayWindowChanged();
     }
 }

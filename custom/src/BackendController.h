@@ -55,20 +55,38 @@ enum class StartScan : uint8_t {
 
 enum class AckType : uint8_t {
         ack_none = 0,
-        ack_target = 1,
-        ack_coop_init = 2,
-        ack_coop_takeoff = 3,
-        ack_coop_flight = 4,
-        ack_coop_align = 5,
-        ack_coop_descend = 6,
-        ack_coop_scan = 7,
-        ack_coop_linear_scan = 8,
-        ack_coop_rtl = 9,
-        ack_coop_opin = 10,
-        ack_start_start = 11,
-        ack_start_resume = 12,
-        ack_start_end = 13,
-        ack_scan = 14
+        //target message
+        ack_target = 1, 
+
+        //flight state message
+        ack_coop_init = 10, 
+        ack_coop_takeoff = 11,
+        ack_coop_flight = 12,
+        ack_coop_align = 13,
+        ack_coop_descend = 14,
+        ack_coop_scan = 15, 
+        ack_coop_linear_scan = 16,
+        ack_coop_rtl = 17,
+        ack_coop_opin = 18,
+
+        //start mission state message
+        ack_start_start = 30, 
+        ack_start_resume = 31,
+        ack_start_end = 32,
+
+        //scan state message
+        ack_scan_off = 40, 
+        ack_scan_on = 41, 
+        ack_scan_kill = 42,
+        ack_scan_cal = 43,
+        ack_scan_tube_seas = 44,
+
+        // boundary markers
+        start_mission_start = ack_start_start,
+        start_mission_end = ack_start_end,
+
+        scan_start = ack_scan_off,
+        scan_end = ack_scan_tube_seas
 };
 
 struct TelemetryStruct {
@@ -129,6 +147,8 @@ class BackendController : public QObject {
     Q_PROPERTY(bool isStopScanButtonEn READ isStopScanButtonEn WRITE setStopScanButtonEn NOTIFY stopScanButtonChanged);
     Q_PROPERTY(bool isSendGoalButtonEn READ isSendGoalButtonEn WRITE setSendGoalButtonEn NOTIFY sendGoalButtonChanged);
     Q_PROPERTY(bool isEndMissionButtonEn READ isEndMissionButtonEn WRITE setEndMissionButtonEn NOTIFY endMissionButtonChanged);
+    Q_PROPERTY(bool isCalibrateButtonEn READ isCalibrateButtonEn WRITE setCalibrateButtonEn NOTIFY calibrateButtonChanged);
+    Q_PROPERTY(bool isTubeSeasButtonEn READ isTubeSeasButtonEn WRITE setTubeSeasButtonEn NOTIFY tubeSeasButtonChanged);
 
     Q_PROPERTY(uint16_t detectorXrayWindow READ detectorXrayWindow WRITE setXrayWindow NOTIFY xrayWindowChanged)
     Q_PROPERTY(QString fileName READ fileName WRITE setFileName NOTIFY fileNameChanged)
@@ -262,6 +282,8 @@ public:
     bool isStopScanButtonEn() const { return this->isStopScanButtonEn_; }
     bool isSendGoalButtonEn() const { return this->isSendGoalButtonEn_; }
     bool isEndMissionButtonEn() const { return this->isEndMissionButtonEn_; }
+    bool isCalibrateButtonEn() const {return this->isCalibrateButtonEn_; }
+    bool isTubeSeasButtonEn() const {return this->isTubeSeasButtonEn_; }
 
     //payload settings
     uint32_t emitterTelemetryCadenceMs() const { return this->em_telem_cadence_ms_; }
@@ -304,6 +326,8 @@ public:
     Q_INVOKABLE void setStopScanButtonEn(const bool enabled);
     Q_INVOKABLE void setSendGoalButtonEn(const bool enabled);
     Q_INVOKABLE void setEndMissionButtonEn(const bool enabled);
+    Q_INVOKABLE void setCalibrateButtonEn(const bool enabled);
+    Q_INVOKABLE void setTubeSeasButtonEn(const bool enabled);
 
     //detect GUI changes and button presses
     Q_INVOKABLE void nudge(const double azimuth, const double distance);
@@ -388,6 +412,8 @@ signals:
     void stopScanButtonChanged();
     void sendGoalButtonChanged();
     void endMissionButtonChanged();
+    void calibrateButtonChanged();
+    void tubeSeasButtonChanged();
 
     //payload settings
     void cadenceChanged();
@@ -432,6 +458,8 @@ private:
     void sendStartScan(StartScan state);
     void send_ack(AckType type, uint8_t src_id);
     void sendGoal(mavlink_cooperative_target_definition_t& msg);
+    bool isValidScanAck(AckType ack_type);
+    bool isValidStartAck(AckType ack_type);
 
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
     QGeoCoordinate start_coordinate_;
@@ -455,6 +483,8 @@ private:
     bool isStopScanButtonEn_ = {false};
     bool isSendGoalButtonEn_ = {false};
     bool isEndMissionButtonEn_ = {false};
+    bool isCalibrateButtonEn_ = {false};
+    bool isTubeSeasButtonEn_ = {false};
     
     bool targMsgSent_ = {false};
     bool calMsgSent_ = {false};
