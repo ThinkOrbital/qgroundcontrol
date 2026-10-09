@@ -55,20 +55,38 @@ enum class StartScan : uint8_t {
 
 enum class AckType : uint8_t {
         ack_none = 0,
-        ack_target = 1,
-        ack_coop_init = 2,
-        ack_coop_takeoff = 3,
-        ack_coop_flight = 4,
-        ack_coop_align = 5,
-        ack_coop_descend = 6,
-        ack_coop_scan = 7,
-        ack_coop_linear_scan = 8,
-        ack_coop_rtl = 9,
-        ack_coop_opin = 10,
-        ack_start_start = 11,
-        ack_start_resume = 12,
-        ack_start_end = 13,
-        ack_scan = 14
+        //target message
+        ack_target = 1, 
+
+        //flight state message
+        ack_coop_init = 10, 
+        ack_coop_takeoff = 11,
+        ack_coop_flight = 12,
+        ack_coop_align = 13,
+        ack_coop_descend = 14,
+        ack_coop_scan = 15, 
+        ack_coop_linear_scan = 16,
+        ack_coop_rtl = 17,
+        ack_coop_opin = 18,
+
+        //start mission state message
+        ack_start_start = 30, 
+        ack_start_resume = 31,
+        ack_start_end = 32,
+
+        //scan state message
+        ack_scan_off = 40, 
+        ack_scan_on = 41, 
+        ack_scan_kill = 42,
+        ack_scan_cal = 43,
+        ack_scan_tube_seas = 44,
+
+        // boundary markers
+        start_mission_start = ack_start_start,
+        start_mission_end = ack_start_end,
+
+        scan_start = ack_scan_off,
+        scan_end = ack_scan_tube_seas
 };
 
 struct TelemetryStruct {
@@ -440,6 +458,8 @@ private:
     void sendStartScan(StartScan state);
     void send_ack(AckType type, uint8_t src_id);
     void sendGoal(mavlink_cooperative_target_definition_t& msg);
+    bool isValidScanAck(AckType ack_type);
+    bool isValidStartAck(AckType ack_type);
 
     QGeoCoordinate center_coordinate_ {40.0156293, -105.2207272};
     QGeoCoordinate start_coordinate_;

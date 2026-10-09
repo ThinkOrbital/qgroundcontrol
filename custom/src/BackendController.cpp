@@ -237,7 +237,6 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                 mavlink_msg_msg_ack_decode(&message, &msg_ack);
                 
                 AckType type = static_cast<AckType> (msg_ack.ack_type);
-                // uint8_t src_id = msg_ack.src_id;
 
                 if(this->msg_ack_map_[message.sysid] != type)
                 {
@@ -255,7 +254,7 @@ void BackendController::_mavlinkMessageReceived(LinkInterface* link, mavlink_mes
                             }
                         }
                         
-                        if((this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan) && (this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan))
+                        if((this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan_cal) && (this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan_cal))
                         {
                             if(this->calMsgSent_ != true)
                             {
@@ -307,15 +306,15 @@ void BackendController::processTelemetryUpdates()
 
     if(this->sent_scan_msg_)
     {
-        if((this->msg_ack_map_[SYSID_DETECTOR] == AckType::ack_scan) 
-            && (this->msg_ack_map_[SYSID_EMITTER] == AckType::ack_scan))
+        if((isValidScanAck(this->msg_ack_map_[SYSID_DETECTOR])) 
+            && (isValidScanAck(this->msg_ack_map_[SYSID_EMITTER])))
         {
             qDebug() << "Both UAV's received scan message";
             this->sent_scan_msg_ = false;
             this->uav_state_updated_.store(true);
         }
-        else if((this->msg_ack_map_[SYSID_DETECTOR] != AckType::ack_scan) 
-            || (this->msg_ack_map_[SYSID_EMITTER] != AckType::ack_scan)) 
+        else if((!isValidScanAck(this->msg_ack_map_[SYSID_DETECTOR])) 
+            || (!isValidScanAck(this->msg_ack_map_[SYSID_EMITTER]))) 
         {
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time = current_time - this->scan_msg_time_;
@@ -359,8 +358,8 @@ void BackendController::processTelemetryUpdates()
 
     if(this->sent_start_msg_)
     {
-        if((is_one_of(this->msg_ack_map_[SYSID_DETECTOR], AckType::ack_start_start, AckType::ack_start_resume, AckType::ack_start_end)) 
-            && (is_one_of(this->msg_ack_map_[SYSID_EMITTER], AckType::ack_start_start, AckType::ack_start_resume, AckType::ack_start_end)))
+        if((isValidStartAck(this->msg_ack_map_[SYSID_DETECTOR])) 
+            && (isValidStartAck(this->msg_ack_map_[SYSID_EMITTER])))
         {
             qDebug() << "Both UAV's received start message";
             this->sent_start_msg_ = false;
@@ -369,7 +368,7 @@ void BackendController::processTelemetryUpdates()
         else
         {
             auto current_time = std::chrono::steady_clock::now();
-            auto elapsed_time = current_time - this->targ_msg_time_; 
+            auto elapsed_time = current_time - this->start_msg_time_; 
             if(elapsed_time >= std::chrono::seconds(1))
             {   
                 //resend start message
@@ -1193,6 +1192,16 @@ void BackendController::send_ack(AckType type, uint8_t src_id)
 
         break; //send only one message out as it's going to both mavlink-routers on port 50882
     }
+}
+
+bool BackendController::isValidScanAck(AckType ack_type){
+    return static_cast<uint8_t>(ack_type) >= static_cast<uint8_t>(AckType::scan_start) &&
+            static_cast<uint8_t>(ack_type) <= static_cast<uint8_t>(AckType::scan_end);
+}
+
+bool BackendController::isValidStartAck(AckType ack_type){
+    return static_cast<uint8_t>(ack_type) >= static_cast<uint8_t>(AckType::start_mission_start) &&
+            static_cast<uint8_t>(ack_type) <= static_cast<uint8_t>(AckType::start_mission_end);
 }
 
 void BackendController::startMission()
