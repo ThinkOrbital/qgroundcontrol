@@ -156,10 +156,10 @@ void PerimeterScanComplexItem::updateStartEndCoordinate() {
     double start_stop_angle_deg = start.azimuthTo(end); 
 
     double angle = angleWrap360(start_stop_angle_deg + 90.0);
+    double prev_bearing = _bearingFact->rawValue().toDouble();
 
-    if(_bearingFact->rawValue().toDouble() > 180 && angle < 180)
-    {
-        angle = angleWrap360(angle + 180);
+    if(std::fabs(angleDelta360(angle, prev_bearing)) > 90.0){
+        angle = angleWrap360(angle + 180.0);
     }
 
     _bearingFact->setRawValue(angle);
