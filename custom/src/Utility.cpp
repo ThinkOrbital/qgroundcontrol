@@ -14,3 +14,7 @@ double angleWrap360(double angle)
 
     return new_angle;
 }
+
+double angleDelta360(double ang1, double ang2){
+     return std::fmod(ang1 - ang2 + 540.0, 360.0) - 180.0;
+}

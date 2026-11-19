@@ -808,19 +808,19 @@ void BackendController::setCenterCoordinate(const QGeoCoordinate &coord)
         {
             double length_m = startCoordinate().distanceTo(endCoordinate())/2;
             
-            QGeoCoordinate newStart;
-            QGeoCoordinate newEnd;
-
-            if(swap_uavs_){
-                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ - 90);
-                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ + 90);
-            } else {
-                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ + 90);
-                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing_ - 90);
+            QGeoCoordinate oldStart = startCoordinate();
+            QGeoCoordinate oldEnd = endCoordinate();
+            double oldAxis = oldStart.azimuthTo(oldEnd);
+            
+            double axis = bearing_ + 90.0;
+            if(std::fabs(angleDelta360(axis, oldAxis)) > 90.0) {
+                axis += 180.0;
             }
 
-            setStartCoordinate(newStart);
+            QGeoCoordinate newStart = centerCoordinate().atDistanceAndAzimuth(length_m, axis + 180.0);
+            QGeoCoordinate newEnd   = centerCoordinate().atDistanceAndAzimuth(length_m, axis);
 
+            setStartCoordinate(newStart);
             emit startCoordinateChanged();
             setEndCoordinate(newEnd);
             emit endCoordinateChanged();
@@ -884,16 +884,17 @@ void BackendController::setBearing(const double bearing)
         {
             double length_m = startCoordinate().distanceTo(endCoordinate())/2;
             
-            QGeoCoordinate newStart;
-            QGeoCoordinate newEnd;
-
-            if(bearing_ > 180){
-                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
-                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
-            } else {
-                newStart = centerCoordinate().atDistanceAndAzimuth(length_m, bearing + 90);
-                newEnd = centerCoordinate().atDistanceAndAzimuth(length_m, bearing - 90);
+            QGeoCoordinate oldStart = startCoordinate();
+            QGeoCoordinate oldEnd = endCoordinate();
+            double oldAxis = oldStart.azimuthTo(oldEnd);
+            
+            double axis = bearing_ + 90.0;
+            if(std::fabs(angleDelta360(axis, oldAxis)) > 90.0) {
+                axis += 180.0;
             }
+
+            QGeoCoordinate newStart = centerCoordinate().atDistanceAndAzimuth(length_m, axis + 180.0);
+            QGeoCoordinate newEnd   = centerCoordinate().atDistanceAndAzimuth(length_m, axis);
 
             setStartCoordinate(newStart);
             emit startCoordinateChanged();
@@ -1109,7 +1110,6 @@ void BackendController::sendStartScan(StartScan state)
     mavlink_start_scan_t msg = {};
     msg.start_scan = static_cast<uint8_t>(state);
     msg.em_test_duration_ms = this->emitterTestDurationMs();
-    msg.em_telemetry_cadence_ms = this->emitterTelemetryCadenceMs();
     msg.em_xray_exposure_ms = this->emitterXrayExposureMs();
     msg.em_xray_voltage_kV = this->emitterXrayVoltageKv();
     msg.em_xray_current_uA = this->emitterXrayCurrentUa();
